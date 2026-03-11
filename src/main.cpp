@@ -12,9 +12,25 @@ const int mqtt_port = MQTT_PORT;
 const char* mqtt_username = MQTT_USERNAME;
 const char* mqtt_password = MQTT_PASSWORD;
 
-// Definición de los canales a utilizar
-const char* LED_TOPIC = LED_TOPICS;
-const char* TEMPERATURA_TOPIC = TEMPERATURA_TOPICS;
+// Alias para usar en el código
+const char* TOPIC_ESTADO_PUERTA = ESTADO_PUERTA;
+
+const char* TOPIC_TEMPERATURA_1 = TEMPERATURA_1;
+const char* TOPIC_TEMPERATURA_2 = TEMPERATURA_2;
+const char* TOPIC_TEMPERATURA_EXTERIOR = TEMPERATURA_EXTERIOR;
+
+const char* TOPIC_TENSION_L1 = TENSION_L1;
+const char* TOPIC_TENSION_L2 = TENSION_L2;
+const char* TOPIC_TENSION_L3 = TENSION_L3;
+
+const char* TOPIC_CORRIENTE_L1 = CORRIENTE_L1;
+const char* TOPIC_CORRIENTE_L2 = CORRIENTE_L2;
+const char* TOPIC_CORRIENTE_L3 = CORRIENTE_L3;
+
+const char* TOPIC_ACT_MOTOR_1 = ACT_MOTOR_1;
+const char* TOPIC_ACT_VENTILADOR_MOTOR_1 = ACT_VENTILADOR_MOTOR_1;
+const char* TOPIC_ACT_MOTOR_2 = ACT_MOTOR_2;
+const char* TOPIC_ACT_LUZ_CAMARA = ACT_LUZ_CAMARA;
 
 const int ledPin = 2;
 const int TemperaturaPin = 34;
@@ -82,7 +98,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   Serial.print( valorAnalogico);
   
 
-  if (strcmp(topic, LED_TOPIC) == 0) {
+  if (strcmp(topic, TOPIC_ACT_LUZ_CAMARA) == 0) {
     int estado = payload[0] - '0';
     digitalWrite(ledPin, estado);
     Serial.print("Estado del LED: ");
@@ -95,8 +111,8 @@ void reconnect() {
     Serial.print("Attempting MQTT connection...");
     if (client.connect("ESP32Client", mqtt_username, mqtt_password)) {
       Serial.println("connected");
-      client.subscribe(LED_TOPIC);
-      client.subscribe(TEMPERATURA_TOPIC);
+      client.subscribe(TOPIC_ACT_LUZ_CAMARA);
+      client.subscribe(TOPIC_TEMPERATURA_1);
     } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());
@@ -127,7 +143,7 @@ void loop() {
   
 
   
-  client.publish(TEMPERATURA_TOPIC, buffer);
+  client.publish(TOPIC_TEMPERATURA_1, buffer);
 
   delay(9000);
 }
