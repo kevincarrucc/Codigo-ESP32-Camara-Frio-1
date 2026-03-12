@@ -52,6 +52,9 @@ bool estadoLuz = false;
 int lastButtonState = HIGH;
 int valorAnalogico = 0;
 float temperatura = 0.0;
+unsigned long ultimoEnvio = 0;
+const unsigned long intervaloEnvio = 9000;
+//
 static const char* root_ca PROGMEM = R"EOF(
 -----BEGIN CERTIFICATE-----
 MIIFazCCA1OgAwIBAgIRAIIQz7DSQONZRGPgu2OCiwAwDQYJKoZIhvcNAQELBQAw
@@ -181,38 +184,37 @@ void loop() {
 
     client.publish(TOPIC_ACT_LUZ_CAMARA, estadoLuz ? "1" : "0");
 
-    delay(200);
   }
 
-lastButtonState = buttonState;
+  lastButtonState = buttonState;
 
-  valorAnalogico = analogRead(Temperatura1Pin);
-  
-  itoa(valorAnalogico, buffer, 10);
-  client.publish(TOPIC_TEMPERATURA_1, buffer);
+  if (millis() - ultimoEnvio >= intervaloEnvio) {
 
-  valorAnalogico = analogRead(Temperatura2Pin);
-  
-  itoa(valorAnalogico, buffer, 10);
-  client.publish(TOPIC_TEMPERATURA_2, buffer);
+    ultimoEnvio = millis();
 
-  valorAnalogico = analogRead(TemperaturaExtPin);
-  
-  itoa(valorAnalogico, buffer, 10);
-  client.publish(TOPIC_TEMPERATURA_EXTERIOR, buffer);
+    char buffer[10];
 
-  valorAnalogico = analogRead(TensionL1Pin);
-  
-  itoa(valorAnalogico, buffer, 10);
-  client.publish(TOPIC_TENSION_L1, buffer);
+    valorAnalogico = analogRead(Temperatura1Pin);
+    itoa(valorAnalogico, buffer, 10);
+    client.publish(TOPIC_TEMPERATURA_1, buffer);
 
-  valorAnalogico = analogRead(CorrienteL1Pin);
-  
-  itoa(valorAnalogico, buffer, 10);
-  client.publish(TOPIC_CORRIENTE_L1, buffer);
+    valorAnalogico = analogRead(Temperatura2Pin);
+    itoa(valorAnalogico, buffer, 10);
+    client.publish(TOPIC_TEMPERATURA_2, buffer);
 
-  int puerta = digitalRead(BttnPuertaPin);
-  client.publish(TOPIC_ESTADO_PUERTA, puerta ? "1" : "0");
+    valorAnalogico = analogRead(TemperaturaExtPin);
+    itoa(valorAnalogico, buffer, 10);
+    client.publish(TOPIC_TEMPERATURA_EXTERIOR, buffer);
 
-  delay(9000);
+    valorAnalogico = analogRead(TensionL1Pin);
+    itoa(valorAnalogico, buffer, 10);
+    client.publish(TOPIC_TENSION_L1, buffer);
+
+    valorAnalogico = analogRead(CorrienteL1Pin);
+    itoa(valorAnalogico, buffer, 10);
+    client.publish(TOPIC_CORRIENTE_L1, buffer);
+
+    int puerta = digitalRead(BttnPuertaPin);
+    client.publish(TOPIC_ESTADO_PUERTA, puerta ? "1" : "0");
+  }
 }
