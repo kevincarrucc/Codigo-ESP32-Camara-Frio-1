@@ -32,8 +32,24 @@ const char* TOPIC_ACT_VENTILADOR_MOTOR_1 = ACT_VENTILADOR_MOTOR_1;
 const char* TOPIC_ACT_MOTOR_2 = ACT_MOTOR_2;
 const char* TOPIC_ACT_LUZ_CAMARA = ACT_LUZ_CAMARA;
 
-const int ledPin = 2;
-const int TemperaturaPin = 34;
+// Definición de pines a utilizar
+//output pines
+const int Motor1Pin = 19;
+const int Motor2Pin = 18;
+const int VentiladorPin = 5;
+const int LuzCamaraPin = 23;
+//input pines
+const int BttnPuertaPin = 4;
+const int BttnLuzPin = 15;
+//adc pines
+const int Temperatura1Pin = 33;
+const int Temperatura2Pin = 32;
+const int TemperaturaExtPin = 35;
+const int TensionL1Pin = 34;
+const int CorrienteL1Pin = 39;
+//variables globales
+bool estadoLuz = false;
+int lastButtonState = HIGH;
 int valorAnalogico = 0;
 float temperatura = 0.0;
 static const char* root_ca PROGMEM = R"EOF(
@@ -93,17 +109,16 @@ void setup_wifi() {
 }
 
 void callback(char* topic, byte* payload, unsigned int length) {
-  Serial.print("Mensaje recibido en el canal: ");
-  Serial.println(topic);
-  Serial.print( valorAnalogico);
-  
-
   if (strcmp(topic, TOPIC_ACT_LUZ_CAMARA) == 0) {
-    int estado = payload[0] - '0';
-    digitalWrite(ledPin, estado);
-    Serial.print("Estado del LED: ");
-    Serial.println(estado);
-  } 
+
+    estadoLuz = payload[0] - '0';
+
+    digitalWrite(LuzCamaraPin, estadoLuz);
+
+    Serial.print("Luz camara MQTT: ");
+    Serial.println(estadoLuz);
+  }
+
 }
 
 void reconnect() {
@@ -112,7 +127,13 @@ void reconnect() {
     if (client.connect("ESP32Client", mqtt_username, mqtt_password)) {
       Serial.println("connected");
       client.subscribe(TOPIC_ACT_LUZ_CAMARA);
+
       client.subscribe(TOPIC_TEMPERATURA_1);
+      client.subscribe(TOPIC_TEMPERATURA_2);
+      client.subscribe(TOPIC_TEMPERATURA_EXTERIOR);
+      client.subscribe(TOPIC_TENSION_L1);
+      client.subscribe(TOPIC_CORRIENTE_L1);
+
     } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());
@@ -123,8 +144,18 @@ void reconnect() {
 }
 
 void setup() {
-  pinMode(ledPin, OUTPUT);
-  pinMode(TemperaturaPin, ANALOG);
+  pinMode(LuzCamaraPin,      OUTPUT);
+  pinMode(VentiladorPin,     OUTPUT);
+  pinMode(Motor1Pin,         OUTPUT);
+  pinMode(Motor2Pin,         OUTPUT);
+  pinMode(BttnPuertaPin,     INPUT);
+  pinMode(BttnLuzPin,        INPUT_PULLUP);
+  pinMode(Temperatura1Pin,   ANALOG);
+  pinMode(Temperatura2Pin,   ANALOG); 
+  pinMode(TemperaturaExtPin, ANALOG);
+  pinMode(TensionL1Pin,      ANALOG);
+  pinMode(CorrienteL1Pin,    ANALOG);
+
   Serial.begin(9600);
   setup_wifi();
   espClient.setCACert(root_ca);
@@ -137,13 +168,51 @@ void loop() {
     reconnect();
   }
   client.loop();
-  valorAnalogico = analogRead(TemperaturaPin);
-  char buffer[10];
-  itoa(valorAnalogico, buffer, 10);
-  
 
+  char buffer[10];
+
+  int buttonState = digitalRead(BttnLuzPin);
+
+  if(buttonState == LOW && lastButtonState == HIGH){
+
+    estadoLuz = !estadoLuz;
+
+    digitalWrite(LuzCamaraPin, estadoLuz);
+
+    client.publish(TOPIC_ACT_LUZ_CAMARA, estadoLuz ? "1" : "0");
+
+    delay(200);
+  }
+
+lastButtonState = buttonState;
+
+  valorAnalogico = analogRead(Temperatura1Pin);
   
+  itoa(valorAnalogico, buffer, 10);
   client.publish(TOPIC_TEMPERATURA_1, buffer);
+
+  valorAnalogico = analogRead(Temperatura2Pin);
+  
+  itoa(valorAnalogico, buffer, 10);
+  client.publish(TOPIC_TEMPERATURA_2, buffer);
+
+  valorAnalogico = analogRead(TemperaturaExtPin);
+  
+  itoa(valorAnalogico, buffer, 10);
+  client.publish(TOPIC_TEMPERATURA_EXTERIOR, buffer);
+
+  valorAnalogico = analogRead(TensionL1Pin);
+  
+  itoa(valorAnalogico, buffer, 10);
+  client.publish(TOPIC_TENSION_L1, buffer);
+
+  valorAnalogico = analogRead(CorrienteL1Pin);
+  
+  itoa(valorAnalogico, buffer, 10);
+  client.publish(TOPIC_CORRIENTE_L1, buffer);
+
+  int puerta = digitalRead(BttnPuertaPin);
+  client.publish(TOPIC_ESTADO_PUERTA, puerta ? "1" : "0");
 
   delay(9000);
 }
