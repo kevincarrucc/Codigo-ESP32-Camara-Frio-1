@@ -1,13 +1,22 @@
 #include "Variables.h"
 #include "arduino.h"
 #include "Clases.h"
+#include "Claves.h"
+#include <Firebase_ESP_Client.h> 
 #include <PubSubClient.h>
 
+extern const char* TOPIC_ACT_LUZ_CAMARA;
+extern const char* TOPIC_ACT_WEB_LUZ_CAMARA;
 
 // Esto le avisa al compilador que las variables existen en el main
-// y que NO las tiene que crear de nuevo acá.
+// DECLARACIONES EXTERN
 extern bool Estado_Luz;
-extern int lastButtonState;
+extern bool Estado_Web_Luz;
+extern int ultimoEstadoTeclaFisica;
+extern int ultimoEstadoWeb; 
+bool ultimoProcesadoWeb = false;
+
+
 extern unsigned long ultimoEnvio;
 extern unsigned long Arranque_M1;
 extern unsigned long Arranque_M2;
@@ -24,12 +33,15 @@ const unsigned long Retardo_Alerta_Puerta = 60000; // Retardo de 1 minuto para l
 unsigned long High_Puerta = 0; // Variable para almacenar el tiempo en que se activó la alerta de puerta abierta
 const unsigned long Intermitencia_Alerta = 1000; // Intermitencia de la alerta de puerta abierta (1 segundo)
 unsigned long Ultimo_Alerta_Puerta = 0; // Variable para almacenar el tiempo del último parpadeo de la alerta de puerta abierta
-const unsigned long Espera_Anomalia = 1800000;  // Espera de 30 minutos para detectar una anomalía en el funcionamiento de los motores, si alguno de los motores lleva encendido más de este tiempo, se detecta una anomalía
+const unsigned long Espera_Anomalia = 60000;  //1800000;   Espera de 30 minutos para detectar una anomalía en el funcionamiento de los motores, si alguno de los motores lleva encendido más de este tiempo, se detecta una anomalía
 
+unsigned long ultimoTiempoCambioLuz = 0;
+const unsigned long tiempoDebounce = 200; // 200 milisegundos de "bloqueo"
 // Esto le dice a Logica.cpp: "Busca estos objetos en el main"
 extern Motor Motor_1;
 extern Motor Motor_2;
 extern Parpadeo Puerta;
+extern Parpadeo anomalia;
 extern Fase Fase_1;
 extern Fase Fase_2;
 extern Fase Fase_3;
@@ -148,26 +160,43 @@ void Alerta_Puerta(void) {
     }
 }
 
-void Luz_Interior (void){
+void Luz_Interior(void) {
+    int lecturaActualTecla = digitalRead(Pulsador_Luz_Pin);
+    unsigned long tiempoActual = millis(); // El tiempo ahora mismo
 
-    // Leemos el estado real del pin físico
-    int lecturaPin = digitalRead(Pulsador_Luz_Pin);
-
-    // Si (Pulsador Físico activo O Pulsador Web activo) Y la luz estaba apagada
-    if ((lecturaPin == HIGH || P_Pulsador_Luz == true) && Ultimo_Estado_Luz == false) 
-    {
-        digitalWrite(Actuador_Luz_Camara, HIGH);
-        Ultimo_Estado_Luz = true;
-        Estado_Luz = true; // Actualiza tu variable global de estado
-    }
-    // Si (Pulsador Físico inactivo Y Pulsador Web inactivo) Y la luz estaba encendida
-    else if ((lecturaPin == LOW && P_Pulsador_Luz == false) && Ultimo_Estado_Luz == true) 
-    {
-        digitalWrite(Actuador_Luz_Camara, LOW);
-        Ultimo_Estado_Luz = false;
-        Estado_Luz = false;
+    // 2. Inicialización
+    if (ultimoEstadoTeclaFisica == -1) {
+        ultimoEstadoTeclaFisica = lecturaActualTecla;
+        ultimoProcesadoWeb = Estado_Web_Luz;
+        return;
     }
 
+    // 3. DETECCIÓN DE CAMBIO FÍSICO (Con Antirrebote)
+    if (ultimoEstadoTeclaFisica == HIGH && lecturaActualTecla == LOW) {
+        // ¿Pasó suficiente tiempo desde el último cambio?
+        if ((tiempoActual - ultimoTiempoCambioLuz) > tiempoDebounce) {
+            
+            Estado_Luz = !Estado_Luz; // Cambia el estado de la luz
+            ultimoTiempoCambioLuz = tiempoActual; // Guardamos CUÁNDO cambió
+        } 
+    }
+    // 4. ACTUALIZACIÓN DEL ESTADO ANTERIOR (Obligatorio para detectar el próximo flanco)      
+    ultimoEstadoTeclaFisica = lecturaActualTecla;
+        
+    
+
+    // 4. DETECCIÓN DE CAMBIO WEB (Sin debounce, es digital y limpio)
+    if (Estado_Web_Luz != ultimoProcesadoWeb) {
+        Estado_Luz = !Estado_Luz;
+        ultimoProcesadoWeb = Estado_Web_Luz;
+    }
+
+    // 5. ACCIÓN FINAL SOBRE EL RELÉ
+    if (digitalRead(Actuador_Luz_Camara) != (Estado_Luz ? HIGH : LOW)) {
+        digitalWrite(Actuador_Luz_Camara, Estado_Luz ? HIGH : LOW);
+        client.publish(TOPIC_ACT_LUZ_CAMARA, Estado_Luz ? "1" : "0");
+        
+    }
 }
 
 void Funcionamiento_Periodico_M2 (void) {
@@ -187,7 +216,7 @@ void Control_Anomalias (void) {
 
     if ((M1_Encendido == true && millis() - Arranque_M1 >= Espera_Anomalia) || (M2_Encendido == true && millis() - Arranque_M2 >= Espera_Anomalia)) {
         Anomalia = true; // Si alguno de los motores lleva encendido más de 30 minutos, se detecta una anomalía
-        digitalWrite(Actuador_Alerta_Anomalia, HIGH); // Activamos la alerta física de anomalía
+        anomalia.parpadear(); // Activa la alerta física de anomalía
     }
      /*En resumen
         - Esta función monitorea el tiempo que llevan encendidos M1 y M2.
@@ -205,5 +234,37 @@ void Control_Fases (void) { // Función para controlar la presencia de las fases
 
     } else if (Ausencia_Fase1 == false && Ausencia_Fase2 == false && Ausencia_Fase3 == false) {
         Aviso_Ausencia = false; // Si todas las fases están presentes, se desactiva el aviso de ausencia de fase
+    }
+}
+
+void Control_Avisos_Temperatura(void) {
+    // --- 1. ALERTAS POR ALTA ---
+    // Alarma Alta
+    if (Temperatura_Promedio >= Alarma_Temperatura_Alta) {
+        Estado_Alarma_Temperatura_Alta = true;
+    } else if (Temperatura_Promedio < (Alarma_Temperatura_Alta - 0.5)) { // Pequeña histéresis de 0.5
+        Estado_Alarma_Temperatura_Alta = false;
+    }
+
+    // Aviso Alta
+    if (Temperatura_Promedio >= Aviso_Temperatura_Alta) {
+        Estado_Aviso_Temperatura_Alta = true;
+    } else if (Temperatura_Promedio < (Aviso_Temperatura_Alta - 0.5)) {
+        Estado_Aviso_Temperatura_Alta = false;
+    }
+
+    // --- 2. ALERTAS POR BAJA ---
+    // Alarma Baja (Si baja de -5, por ejemplo)
+    if (Temperatura_Promedio <= Alarma_Temperatura_Baja) {
+        Estado_Alarma_Temperatura_Baja = true;
+    } else if (Temperatura_Promedio > (Alarma_Temperatura_Baja + 0.5)) {
+        Estado_Alarma_Temperatura_Baja = false;
+    }
+
+    // Aviso Baja
+    if (Temperatura_Promedio <= Aviso_Temperatura_Baja) {
+        Estado_Aviso_Temperatura_Baja = true;
+    } else if (Temperatura_Promedio > (Aviso_Temperatura_Baja + 0.5)) {
+        Estado_Aviso_Temperatura_Baja = false;
     }
 }

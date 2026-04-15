@@ -10,10 +10,12 @@
 #include <Arduino.h>
 #include <Firebase_ESP_Client.h> // <--- ESTA LÍNEA ES CRUCIAL
 #include "Variables.h"
+#include "Clases.h"
 
 
 // Esto le avisa al compilador que las variables existen en el main
 // y que NO las tiene que crear de nuevo acá.
+extern bool Estado_Web_Luz;
 extern bool Estado_Luz;
 extern int lastButtonState;
 extern unsigned long ultimoEnvio;
@@ -21,6 +23,8 @@ extern unsigned long Arranque_M1;
 extern unsigned long Arranque_M2;
 extern WiFiClientSecure espClient; 
 extern PubSubClient client;
+
+extern Parpadeo Coneccion_Wifi; // Instancia para el parpadeo de la conexión WiFi
 
 // Instancia para el ADS1015
 Adafruit_ADS1015 ads; 
@@ -48,15 +52,30 @@ const char* TOPIC_CORRIENTE_L1 = CORRIENTE_L1;
 const char* TOPIC_CORRIENTE_L2 = CORRIENTE_L2;
 const char* TOPIC_CORRIENTE_L3 = CORRIENTE_L3;
 
-const char* TOPIC_ACT_MOTOR_1 = ACT_MOTOR_1;
-const char* TOPIC_ACT_VENTILADOR_MOTOR_1 = ACT_VENTILADOR_MOTOR_1;
-const char* TOPIC_ACT_MOTOR_2 = ACT_MOTOR_2;
+const char* TOPIC_ESTADO_MOTOR_1 = ESTADO_MOTOR_1;
+const char* TOPIC_ESTADO_MOTOR_2 = ESTADO_MOTOR_2;
 const char* TOPIC_ACT_LUZ_CAMARA = ACT_LUZ_CAMARA;
+const char* TOPIC_ACT_WEB_LUZ_CAMARA = ACT_WEB_LUZ_CAMARA;
 
 // --- Alarmas y Seguridad (Crucial para el monitoreo remoto) ---
-const char* TOPIC_ALERTA_FASES = ALERTA_FASES;        // Aviso_Ausencia
+const char* TOPIC_ESTADO_PRESENCIA_FASE = ESTADO_PRESENCIA_FASE;        // Aviso_Ausencia
 const char* TOPIC_ALERTA_ANOMALIA = ALERTA_ANOMALIA;  // Anomalia (30 min)
 const char* TOPIC_ALERTA_PUERTA = ALERTA_PUERTA;      // Alerta_Puerta_Abierta
+
+//variables de control
+const char* TOPIC_SET_POINT_TEMPERATURA = SET_POINT_TEMPERATURA;
+const char* TOPIC_SET_POINT_HISTERESIS = SET_POINT_HISTERESIS;
+
+// Variables para el control de temperatura
+const char* TOPIC_ESTADO_ALARMA_TEMPERATURA_ALTA = ESTADO_ALARMA_TEMPERATURA_ALTA;
+const char* TOPIC_ESTADO_ALARMA_TEMPERATURA_BAJA = ESTADO_ALARMA_TEMPERATURA_BAJA;
+const char* TOPIC_ESTADO_AVISO_TEMPERATURA_ALTA = ESTADO_AVISO_TEMPERATURA_ALTA;
+const char* TOPIC_ESTADO_AVISO_TEMPERATURA_BAJA = ESTADO_AVISO_TEMPERATURA_BAJA;
+
+const char* TOPIC_ALARMA_TEMPERATURA_ALTA = ALARMA_TEMPERATURA_ALTA;
+const char* TOPIC_ALARMA_TEMPERATURA_BAJA = ALARMA_TEMPERATURA_BAJA;      
+const char* TOPIC_AVISO_TEMPERATURA_ALTA = AVISO_TEMPERATURA_ALTA;
+const char* TOPIC_AVISO_TEMPERATURA_BAJA = AVISO_TEMPERATURA_BAJA;
 
 
 //unsigned long ultimoEnvio = 0;
@@ -110,32 +129,71 @@ void setup_wifi();
 void reconnect();
 void callback(char* topic, byte* payload, unsigned int length);
 
-void callback(char* topic, byte* payload, unsigned int length) {
-  if (strcmp(topic, TOPIC_ACT_LUZ_CAMARA) == 0) {
 
-    Estado_Luz = payload[0] - '0';
+void callback(char* topic, unsigned char* payload, unsigned int length) {
 
-    digitalWrite(Actuador_Luz_Camara, Estado_Luz);
+    char buffer[length + 1];
+    memcpy(buffer, payload, length);
+    buffer[length] = '\0'; // Asegura que el buffer sea una cadena válida
 
-    Serial.print("Luz camara MQTT: ");
-    Serial.println(Estado_Luz);
-  }
+   if (strcmp(topic, TOPIC_ACT_WEB_LUZ_CAMARA) == 0) {
+
+    Estado_Web_Luz = payload[0] - '0';
+   }
+    if (strcmp(topic, TOPIC_SET_POINT_TEMPERATURA) == 0) {
+
+        Referencia_Temperatura = atof(buffer);
+    }
+    if (strcmp(topic, TOPIC_SET_POINT_HISTERESIS) == 0) {
+
+        Ventana_Temperatura = atof(buffer);
+    }
+    if (strcmp(topic, TOPIC_ALARMA_TEMPERATURA_ALTA) == 0) {
+
+        Alarma_Temperatura_Alta = atof(buffer);
+    }
+    if (strcmp(topic, TOPIC_ALARMA_TEMPERATURA_BAJA) == 0) {
+
+        Alarma_Temperatura_Baja = atof(buffer);
+    }
+    if (strcmp(topic, TOPIC_AVISO_TEMPERATURA_ALTA) == 0) {
+
+        Aviso_Temperatura_Alta = atof(buffer);
+    }
+    if (strcmp(topic, TOPIC_AVISO_TEMPERATURA_BAJA) == 0) {
+
+        Aviso_Temperatura_Baja = atof(buffer);
+    }
 }
-
+ 
 void setup_wifi() {
-  delay(10);
-  Serial.println();
   Serial.print("Connecting to ");
   Serial.println(ssid);
   WiFi.begin(ssid, password);
+
+  // Mientras NO esté conectado...
   while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
+    
+    // Ejecutamos el método parpadear constantemente.
+    // Como tu clase usa millis(), ella sola decidirá 
+    // cuándo cambiar el estado del LED sin detener el código.
+    Coneccion_Wifi.parpadear(); 
+    
+    // Opcional: un mini delay para no saturar el Serial, 
+    // pero MUCHO menor que el intervalo de parpadeo.
+    delay(1); 
+    
+    // Para ver el progreso en el monitor serie sin llenarlo de puntos:
+    static unsigned long ultimoPunto = 0;
+    if (millis() - ultimoPunto > 500) {
+        Serial.print(".");
+        ultimoPunto = millis();
+    }
   }
-  Serial.println("");
-  Serial.println("WiFi connected");
-  Serial.println("IP address: ");
-  Serial.println(WiFi.localIP());
+
+  Serial.println("\nWiFi connected");
+  // Al conectar, dejamos el LED fijo (HIGH o LOW según tu circuito)
+  digitalWrite(Actuatuador_coneccion_wifi, HIGH); 
 }
 
 void reconnect() {
@@ -144,14 +202,25 @@ void reconnect() {
     String clientId = "ESP32-" + String(random(0xffff), HEX);
 if (client.connect(clientId.c_str(), mqtt_username, mqtt_password)) {
       Serial.println("connected");
-      client.subscribe(TOPIC_ACT_LUZ_CAMARA);
-
+      client.subscribe(TOPIC_ACT_LUZ_CAMARA);/*
       client.subscribe(TOPIC_TEMPERATURA_1);
       client.subscribe(TOPIC_TEMPERATURA_2);
       client.subscribe(TOPIC_TEMPERATURA_EXTERIOR);
       client.subscribe(TOPIC_TENSION_L1);
       client.subscribe(TOPIC_CORRIENTE_L1);
-
+      client.subscribe(TOPIC_ESTADO_PUERTA);
+      client.subscribe(TOPIC_ESTADO_MOTOR_1);
+      client.subscribe(TOPIC_ESTADO_MOTOR_2);
+      client.subscribe(TOPIC_ESTADO_PRESENCIA_FASE);
+      client.subscribe(TOPIC_ALERTA_ANOMALIA);
+      client.subscribe(TOPIC_ALERTA_PUERTA);*/
+      client.subscribe(TOPIC_ACT_WEB_LUZ_CAMARA);
+      client.subscribe(TOPIC_SET_POINT_TEMPERATURA);
+      client.subscribe(TOPIC_SET_POINT_HISTERESIS);
+      client.subscribe(TOPIC_ALARMA_TEMPERATURA_ALTA);
+      client.subscribe(TOPIC_ALARMA_TEMPERATURA_BAJA);
+      client.subscribe(TOPIC_AVISO_TEMPERATURA_ALTA);
+      client.subscribe(TOPIC_AVISO_TEMPERATURA_BAJA);
     } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());
@@ -168,10 +237,6 @@ void procesarLogicaControl() {
     reconnect();
   }
   client.loop();
-
-  // 2. Lógica del Pulsador de Luz (Debounce simple)
-    client.publish(TOPIC_ACT_LUZ_CAMARA, Estado_Luz ? "1" : "0");// Publica el estado actual de la luz cada vez que se procesa la lógica, para mantener la sincronización con la web
-
   // 3. Envío periódico de datos a la web (MQTT)
   if (millis() - ultimoEnvio >= intervaloEnvio) {
     ultimoEnvio = millis();
@@ -216,45 +281,52 @@ void procesarLogicaControl() {
     client.publish(TOPIC_ESTADO_PUERTA, Puerta_Abierta ? "1" : "0");
 
     // --- ESTADOS DE MOTORES (0 o 1) ---
-    client.publish(TOPIC_ACT_MOTOR_1, M1_Encendido ? "1" : "0");
-    client.publish(TOPIC_ACT_MOTOR_2, M2_Encendido ? "1" : "0");
+    client.publish(TOPIC_ESTADO_MOTOR_1, M1_Encendido ? "1" : "0");
+    client.publish(TOPIC_ESTADO_MOTOR_2, M2_Encendido ? "1" : "0");
 
     // --- ALARMAS CRÍTICAS ---
-    client.publish(TOPIC_ALERTA_FASES, Aviso_Ausencia ? "1" : "0");
+    client.publish(TOPIC_ESTADO_PRESENCIA_FASE, Aviso_Ausencia ? "1" : "0");
     
     // Si un motor falló o quedó encendido de más (Anomalía)
     client.publish(TOPIC_ALERTA_ANOMALIA, Anomalia ? "1" : "0");
 
     // Si la puerta quedó abierta más tiempo del debido
     client.publish(TOPIC_ALERTA_PUERTA, Alerta_Puerta_Abierta ? "1" : "0");
+
+    //Enviso de avisos y alarmas de temperatura
+    client.publish(TOPIC_ESTADO_ALARMA_TEMPERATURA_ALTA, Estado_Alarma_Temperatura_Alta ? "1" : "0");
+    client.publish(TOPIC_ESTADO_ALARMA_TEMPERATURA_BAJA, Estado_Alarma_Temperatura_Baja ? "1" : "0");
+    client.publish(TOPIC_ESTADO_AVISO_TEMPERATURA_ALTA, Estado_Aviso_Temperatura_Alta ? "1" : "0");
+    client.publish(TOPIC_ESTADO_AVISO_TEMPERATURA_BAJA, Estado_Aviso_Temperatura_Baja ? "1" : "0");
   }
 }
 
 void inicializarHardware() {
     // --- SALIDAS (Actuadores y LEDs) ---
-    pinMode(Actuador_M1, OUTPUT);             // D19
-    pinMode(Actuador_M2, OUTPUT);             // D18
-    pinMode(Actuador_Ventilador_M1, OUTPUT);  // D5
-    pinMode(Actuador_Luz_Camara, OUTPUT);     // D23
-    pinMode(Actuador_Alerta_Puerta, OUTPUT);  // D4
-    pinMode(Actuador_Alerta_Anomalia, OUTPUT);// D15
-    pinMode(Actuador_F1, OUTPUT);             // D25
-    pinMode(Actuador_F2, OUTPUT);             // D26
-    pinMode(Actuador_F3, OUTPUT);             // D27
+    pinMode(Actuador_M1, OUTPUT);                 // D19
+    pinMode(Actuador_M2, OUTPUT);                 // D18
+    pinMode(Actuador_Ventilador_M1, OUTPUT);      // D5
+    pinMode(Actuador_Luz_Camara, OUTPUT);         // D23
+    pinMode(Actuador_Alerta_Puerta, OUTPUT);      // D4
+    pinMode(Actuador_Alerta_Anomalia, OUTPUT);    // D15
+    pinMode(Actuatuador_coneccion_wifi, OUTPUT);  // D14
+    pinMode(Actuador_F1, OUTPUT);                 // D25
+    pinMode(Actuador_F2, OUTPUT);                 // D26
+    pinMode(Actuador_F3, OUTPUT);                 // D27
 
     // --- ENTRADAS DIGITALES (Con Pull-up para evitar ruido) ---
-    pinMode(Final_Puerta_Pin, INPUT_PULLUP);  // D4
-    pinMode(Pulsador_Luz_Pin, INPUT);  // D2
+    pinMode(Final_Puerta_Pin, INPUT_PULLUP);      // D4
+    pinMode(Pulsador_Luz_Pin, INPUT_PULLUP);      // D17
 
     // --- ENTRADAS ANALÓGICAS ---
     // En ESP32, pinMode(ANALOG) no es estrictamente necesario para analogRead,
     // pero dejarlo ayuda a documentar el código.
-    pinMode(Temperatura_C1_Pin, INPUT);      // D33
-    pinMode(Temperatura_C2_Pin, INPUT);      // D32
-    pinMode(Temperatura_Ext_Pin, INPUT);     // D35
-    pinMode(Tension_L1_Pin, INPUT);          // D36
-    pinMode(Tension_L2_Pin, INPUT);          // D39
-    pinMode(Tension_L3_Pin, INPUT);          // D34
+    pinMode(Temperatura_C1_Pin, INPUT);           // D33
+    pinMode(Temperatura_C2_Pin, INPUT);           // D32
+    pinMode(Temperatura_Ext_Pin, INPUT);          // D35
+    pinMode(Tension_L1_Pin, INPUT);               // D36
+    pinMode(Tension_L2_Pin, INPUT);               // D39
+    pinMode(Tension_L3_Pin, INPUT);               // D34
 
     // Estado inicial de seguridad (Todo apagado al arrancar)
     digitalWrite(Actuador_M1, LOW);
@@ -281,25 +353,9 @@ void loop_I2C() {
   Corriente_L3_Lectura = ads.readADC_SingleEnded(2);
 }
 
-// En Red.cpp
 void inicializarComunicaciones() {
     setup_wifi();
     espClient.setCACert(root_ca);
     client.setServer(mqtt_server, mqtt_port);
     client.setCallback(callback);
-}
-
-// --- FUNCIÓN DE ESCUCHA (CALLBACK) ---
-void streamCallback(FirebaseStream data) {
-    if (data.dataTypeEnum() == fb_esp_rtdb_data_type_boolean) {
-        // Vinculamos el dato de la web con tu variable del ESP32
-        P_Pulsador_Luz = data.boolData();
-        
-        Serial.print(">>> Firebase Update - P_Pulsador_Luz: ");
-        Serial.println(P_Pulsador_Luz ? "ON" : "OFF");
-    }
-}
-
-void streamTimeoutCallback(bool timeout) {
-    if (timeout) Serial.println("Stream timeout, reconectando...");
 }

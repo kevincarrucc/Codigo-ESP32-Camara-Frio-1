@@ -11,8 +11,8 @@ void procesarLogicaControl();
 void setup_I2C();
 void setup_wifi();
 void reconnect();
+void callback(char* topic, unsigned char* payload, unsigned int length);
 
-// Prototipo del callback de MQTT (necesario si se usa en otros lados)
-void callback(char* topic, byte* payload, unsigned int length);
+
 
 #endif
