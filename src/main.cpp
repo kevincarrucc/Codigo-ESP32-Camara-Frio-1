@@ -1,220 +1,155 @@
 #include <Arduino.h>
+#include <Wire.h>
 #include <WiFi.h>
 #include <PubSubClient.h>
 #include <WiFiClientSecure.h>
-#include "Claves.h"
+#include "Claves.h"         
+#include "Variables.h"  
+#include "Clases.h"         
+#include "Logica.h"
+#include "Entradas.h"
+#include "Escalado.h"
+//firebase
+#include <Firebase_ESP_Client.h> // Asegúrate de tener esta librería instalada
+#include <addons/TokenHelper.h>
+#include <addons/RTDBHelper.h>
 
-const char* ssid = WIFI_SSID;
-const char* password = WIFI_PASSWORD;
+FirebaseData fbdo_stream; // Objeto para el flujo de datos en tiempo real
+FirebaseAuth auth;
+FirebaseConfig config_fb;
 
-const char* mqtt_server = MQTT_SERVER;
-const int mqtt_port = MQTT_PORT;
-const char* mqtt_username = MQTT_USERNAME;
-const char* mqtt_password = MQTT_PASSWORD;
+bool Estado_Luz = false;
+bool Estado_Web_Luz = false;
+int ultimoEstadoTeclaFisica = -1;
+int ultimoEstadoWeb = -1; // Para detectar cambios en el callback de la web
 
-// Alias para usar en el código
-const char* TOPIC_ESTADO_PUERTA = ESTADO_PUERTA;
-
-const char* TOPIC_TEMPERATURA_1 = TEMPERATURA_1;
-const char* TOPIC_TEMPERATURA_2 = TEMPERATURA_2;
-const char* TOPIC_TEMPERATURA_EXTERIOR = TEMPERATURA_EXTERIOR;
-
-const char* TOPIC_TENSION_L1 = TENSION_L1;
-const char* TOPIC_TENSION_L2 = TENSION_L2;
-const char* TOPIC_TENSION_L3 = TENSION_L3;
-
-const char* TOPIC_CORRIENTE_L1 = CORRIENTE_L1;
-const char* TOPIC_CORRIENTE_L2 = CORRIENTE_L2;
-const char* TOPIC_CORRIENTE_L3 = CORRIENTE_L3;
-
-const char* TOPIC_ACT_MOTOR_1 = ACT_MOTOR_1;
-const char* TOPIC_ACT_VENTILADOR_MOTOR_1 = ACT_VENTILADOR_MOTOR_1;
-const char* TOPIC_ACT_MOTOR_2 = ACT_MOTOR_2;
-const char* TOPIC_ACT_LUZ_CAMARA = ACT_LUZ_CAMARA;
-
-// Definición de pines a utilizar
-//output pines
-const int Motor1Pin = 19;
-const int Motor2Pin = 18;
-const int VentiladorPin = 5;
-const int LuzCamaraPin = 23;
-//input pines
-const int BttnPuertaPin = 4;
-const int BttnLuzPin = 15;
-//adc pines
-const int Temperatura1Pin = 33;
-const int Temperatura2Pin = 32;
-const int TemperaturaExtPin = 35;
-const int TensionL1Pin = 34;
-const int CorrienteL1Pin = 39;
-//variables globales
-bool estadoLuz = false;
+// --- 1. DEFINICIÓN DE VARIABLES GLOBALES ---
+float Tension_L1=0, Tension_L2=0, Tension_L3=0;
+float Corriente_L1=0, Corriente_L2=0, Corriente_L3=0;
+float Temperatura_C1=0, Temperatura_C2=0, Temperatura_Exterior=0;
+bool Ausencia_Fase1=false, Ausencia_Fase2=false, Ausencia_Fase3=false;
 int lastButtonState = HIGH;
-int valorAnalogico = 0;
-float temperatura = 0.0;
 unsigned long ultimoEnvio = 0;
-const unsigned long intervaloEnvio = 9000;
-//
-static const char* root_ca PROGMEM = R"EOF(
------BEGIN CERTIFICATE-----
-MIIFazCCA1OgAwIBAgIRAIIQz7DSQONZRGPgu2OCiwAwDQYJKoZIhvcNAQELBQAw
-TzELMAkGA1UEBhMCVVMxKTAnBgNVBAoTIEludGVybmV0IFNlY3VyaXR5IFJlc2Vh
-cmNoIEdyb3VwMRUwEwYDVQQDEwxJU1JHIFJvb3QgWDEwHhcNMTUwNjA0MTEwNDM4
-WhcNMzUwNjA0MTEwNDM4WjBPMQswCQYDVQQGEwJVUzEpMCcGA1UEChMgSW50ZXJu
-ZXQgU2VjdXJpdHkgUmVzZWFyY2ggR3JvdXAxFTATBgNVBAMTDElTUkcgUm9vdCBY
-MTCCAiIwDQYJKoZIhvcNAQEBBQADggIPADCCAgoCggIBAK3oJHP0FDfzm54rVygc
-h77ct984kIxuPOZXoHj3dcKi/vVqbvYATyjb3miGbESTtrFj/RQSa78f0uoxmyF+
-0TM8ukj13Xnfs7j/EvEhmkvBioZxaUpmZmyPfjxwv60pIgbz5MDmgK7iS4+3mX6U
-A5/TR5d8mUgjU+g4rk8Kb4Mu0UlXjIB0ttov0DiNewNwIRt18jA8+o+u3dpjq+sW
-T8KOEUt+zwvo/7V3LvSye0rgTBIlDHCNAymg4VMk7BPZ7hm/ELNKjD+Jo2FR3qyH
-B5T0Y3HsLuJvW5iB4YlcNHlsdu87kGJ55tukmi8mxdAQ4Q7e2RCOFvu396j3x+UC
-B5iPNgiV5+I3lg02dZ77DnKxHZu8A/lJBdiB3QW0KtZB6awBdpUKD9jf1b0SHzUv
-KBds0pjBqAlkd25HN7rOrFleaJ1/ctaJxQZBKT5ZPt0m9STJEadao0xAH0ahmbWn
-OlFuhjuefXKnEgV4We0+UXgVCwOPjdAvBbI+e0ocS3MFEvzG6uBQE3xDk3SzynTn
-jh8BCNAw1FtxNrQHusEwMFxIt4I7mKZ9YIqioymCzLq9gwQbooMDQaHWBfEbwrbw
-qHyGO0aoSCqI3Haadr8faqU9GY/rOPNk3sgrDQoo//fb4hVC1CLQJ13hef4Y53CI
-rU7m2Ys6xt0nUW7/vGT1M0NPAgMBAAGjQjBAMA4GA1UdDwEB/wQEAwIBBjAPBgNV
-HRMBAf8EBTADAQH/MB0GA1UdDgQWBBR5tFnme7bl5AFzgAiIyBpY9umbbjANBgkq
-hkiG9w0BAQsFAAOCAgEAVR9YqbyyqFDQDLHYGmkgJykIrGF1XIpu+ILlaS/V9lZL
-ubhzEFnTIZd+50xx+7LSYK05qAvqFyFWhfFQDlnrzuBZ6brJFe+GnY+EgPbk6ZGQ
-3BebYhtF8GaV0nxvwuo77x/Py9auJ/GpsMiu/X1+mvoiBOv/2X/qkSsisRcOj/KK
-NFtY2PwByVS5uCbMiogziUwthDyC3+6WVwW6LLv3xLfHTjuCvjHIInNzktHCgKQ5
-ORAzI4JMPJ+GslWYHb4phowim57iaztXOoJwTdwJx4nLCgdNbOhdjsnvzqvHu7Ur
-TkXWStAmzOVyyghqpZXjFaH3pO3JLF+l+/+sKAIuvtd7u+Nxe5AW0wdeRlN8NwdC
-jNPElpzVmbUq4JUagEiuTDkHzsxHpFKVK7q4+63SM1N95R1NbdWhscdCb+ZAJzVc
-oyi3B43njTOQ5yOf+1CceWxG1bQVs5ZufpsMljq4Ui0/1lvh+wjChP4kqKOJ2qxq
-4RgqsahDYVvTH9w7jXbyLeiNdd8XM2w9U/t7y0Ff/9yi0GE44Za4rF2LN9d11TPA
-mRGunUHBcnWEvgJBQl9nJEiU0Zsnvgc/ubhPgXRR4Xq37Z0j4r7g1SgEEzwxA57d
-emyPxgcYxn/eR44/KJ4EBs+lVDR3veyJm+kXQ99b21/+jh5Xos1AnX5iItreGCc=
------END CERTIFICATE-----
-)EOF";
+unsigned long Arranque_M1 = 0, Arranque_M2 = 0;
 
+float Referencia_Temperatura = 3.0; 
+float Ventana_Temperatura = 2.0;      
+float Temperatura_Promedio = 0.0;
+bool Realizar_Arranque_Periodico = false;
+bool Ultimo_Estado_M2 = false;
+bool Ultimo_Estado_Luz = false;
+bool Anomalia = false, Aviso_Ausencia = false, Alerta_Puerta_Abierta = false;
+bool M1_Encendido = false, M2_Encendido = false, Puerta_Abierta = false;
+bool P_Pulsador_Luz = false; 
+
+
+
+// Valores de umbrales (puedes ajustar los números)
+float Alarma_Temperatura_Alta = 10.0;
+float Alarma_Temperatura_Baja = -2.0;
+float Aviso_Temperatura_Alta = 8.0;
+float Aviso_Temperatura_Baja = 0.0;
+
+// Estados de las alarmas (Banderas)
+bool Estado_Alarma_Temperatura_Alta = false;
+bool Estado_Alarma_Temperatura_Baja = false;
+bool Estado_Aviso_Temperatura_Alta = false;
+bool Estado_Aviso_Temperatura_Baja = false;
+
+// --- 2. OBJETOS DE RED ---
 WiFiClientSecure espClient;
 PubSubClient client(espClient);
 
-unsigned long lastMsg = 0;
-char msg[50];
+// --- 3. INSTANCIAS DE CLASES ---
+Motor Motor_1(Actuador_M1);
+Motor Motor_2(Actuador_M2);
+Parpadeo Puerta(Actuador_Alerta_Puerta, 1000); // 1000ms de intermitencia
+Parpadeo Coneccion_Wifi(Actuatuador_coneccion_wifi, 150);
+Parpadeo anomalia(Actuador_Alerta_Anomalia, 100);
+Fase Fase_1(Actuador_F1, Ausencia_Fase1, Tension_L1);
+Fase Fase_2(Actuador_F2, Ausencia_Fase2, Tension_L2);
+Fase Fase_3(Actuador_F3, Ausencia_Fase3, Tension_L3);
 
-void setup_wifi() {
-  delay(10);
-  Serial.println();
-  Serial.print("Connecting to ");
-  Serial.println(ssid);
-  WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-  }
-  Serial.println("");
-  Serial.println("WiFi connected");
-  Serial.println("IP address: ");
-  Serial.println(WiFi.localIP());
-}
-
-void callback(char* topic, byte* payload, unsigned int length) {
-  if (strcmp(topic, TOPIC_ACT_LUZ_CAMARA) == 0) {
-
-    estadoLuz = payload[0] - '0';
-
-    digitalWrite(LuzCamaraPin, estadoLuz);
-
-    Serial.print("Luz camara MQTT: ");
-    Serial.println(estadoLuz);
-  }
-
-}
-
-void reconnect() {
-  while (!client.connected()) {
-    Serial.print("Attempting MQTT connection...");
-    if (client.connect("ESP32Client", mqtt_username, mqtt_password)) {
-      Serial.println("connected");
-      client.subscribe(TOPIC_ACT_LUZ_CAMARA);
-
-      client.subscribe(TOPIC_TEMPERATURA_1);
-      client.subscribe(TOPIC_TEMPERATURA_2);
-      client.subscribe(TOPIC_TEMPERATURA_EXTERIOR);
-      client.subscribe(TOPIC_TENSION_L1);
-      client.subscribe(TOPIC_CORRIENTE_L1);
-
-    } else {
-      Serial.print("failed, rc=");
-      Serial.print(client.state());
-      Serial.println(" try again in 5 seconds");
-      delay(5000);
-    }
-  }
-}
-
+// --- 4. SETUP ---
 void setup() {
-  pinMode(LuzCamaraPin,      OUTPUT);
-  pinMode(VentiladorPin,     OUTPUT);
-  pinMode(Motor1Pin,         OUTPUT);
-  pinMode(Motor2Pin,         OUTPUT);
-  pinMode(BttnPuertaPin,     INPUT);
-  pinMode(BttnLuzPin,        INPUT_PULLUP);
-  pinMode(Temperatura1Pin,   ANALOG);
-  pinMode(Temperatura2Pin,   ANALOG); 
-  pinMode(TemperaturaExtPin, ANALOG);
-  pinMode(TensionL1Pin,      ANALOG);
-  pinMode(CorrienteL1Pin,    ANALOG);
+  Serial.begin(115200);
+  delay(1000);
 
-  Serial.begin(9600);
-  setup_wifi();
-  espClient.setCACert(root_ca);
-  client.setServer(mqtt_server, mqtt_port);
-  client.setCallback(callback);
+void streamTimeoutCallback(bool timeout);
+  // Configuración de pines extra y comunicaciones
+  inicializarHardware();      // Configura INPUT_PULLUP y otros pines en Entradas.cpp
+  inicializarComunicaciones(); // Conecta WiFi y MQTT en Red.cpp
+
+  Serial.println(">>> HELADERA INDUSTRIAL ONLINE <<<");
 }
 
+// --- 5. LOOP PRINCIPAL ---
 void loop() {
-  if (!client.connected()) {
-    reconnect();
-  }
-  client.loop();
+  Escalar(); // Lee y escala sensores (en Escalado.cpp)
+  // A. Gestión de Red y Mensajes MQTT (en Entradas.cpp)
+  //procesarLogicaControl(); 
+  Control_Fases(); // Verifica fases y actualiza Ausencia_FaseX
+  // B. Tu Lógica Real (de Logica.cpp)
+  Control_Avisos_Temperatura(); // Control de avisos y alarmas de temperatura
+  Control_Temperatura();           // Control de frío y motores
+  Alerta_Puerta();                 // Manejo del sensor de puerta
+  Luz_Interior();                  // Pulsador físico y web
+  Funcionamiento_Periodico_M2();   // Rotación de motores
+  Control_Anomalias();             // Seguridad por tiempo de encendido
+  procesarLogicaControl();           // Procesa la lógica de control de motores y alertas (en Logica.cpp)
+  
+  static unsigned long ultimoMonitor = 0;
+  if (millis() - ultimoMonitor >= 2000) { // Cada 2 segundos
+    ultimoMonitor = millis();
+    Serial.println("---------- ESTADO HELADERA ----------");
+    Serial.print("Temp 1: "); Serial.print(Temperatura_C1); Serial.println(" °C");
+    Serial.print("Temp 2: "); Serial.print(Temperatura_C2); Serial.println(" °C");
+    Serial.print("PROMEDIO: "); Serial.print(Temperatura_Promedio); Serial.println(" °C");
+    Serial.print("REFERENCIA: "); Serial.print(Referencia_Temperatura); Serial.println(" °C");
+    Serial.print("Ventana (+/-): "); Serial.print(Ventana_Temperatura); Serial.println(" °C");
+    Serial.print("MOTOR 1: "); Serial.println(digitalRead(Actuador_M1) ? "ENCENDIDO" : "APAGADO");
+    Serial.print("MOTOR 2: "); Serial.println(digitalRead(Actuador_M2) ? "ENCENDIDO" : "APAGADO");
+    Serial.println("-------------------------------------");
+    static unsigned long ultimoMonitor = 0;
+    Serial.println("---------- ESTADOS DE ILUMINACIÓN ----------");
+    
+    // 1. Lectura física del pin (GPIO 2)
+    int estadoPinFisico = digitalRead(Pulsador_Luz_Pin);
+    Serial.print("Pulsador Físico (Pin 2): ");
+    Serial.println(estadoPinFisico == HIGH ? "1 (ALTO)" : "0 (BAJO)");
 
-  char buffer[10];
+    // 2. Estado de la variable unificada (La que cambia por MQTT/Firebase)
+    Serial.print("Estado Variable Web/Red (Estado_Luz): ");
+    Serial.println(Estado_Luz ? "TRUE (ENCENDER)" : "FALSE (APAGAR)");
 
-  int buttonState = digitalRead(BttnLuzPin);
+    // 3. Memoria del ciclo anterior (Para detectar flancos)
+    Serial.print("Memoria Estado Anterior (Ultimo_Estado_Luz): ");
+    Serial.println(Ultimo_Estado_Luz ? "ENCENDIDO" : "APAGADO");
 
-  if(buttonState == LOW && lastButtonState == HIGH){
+    // 4. Verificación real del Relé (GPIO 23)
+    int estadoRele = digitalRead(Actuador_Luz_Camara);
+    Serial.print("Estado REAL Relé/Luz (Pin 23): ");
+    Serial.println(estadoRele == HIGH ? "FÍSICAMENTE ON" : "FÍSICAMENTE OFF");
+    
+    Serial.println("--------------------------------------------");  
 
-    estadoLuz = !estadoLuz;
-
-    digitalWrite(LuzCamaraPin, estadoLuz);
-
-    client.publish(TOPIC_ACT_LUZ_CAMARA, estadoLuz ? "1" : "0");
-
-  }
-
-  lastButtonState = buttonState;
-
-  if (millis() - ultimoEnvio >= intervaloEnvio) {
-
-    ultimoEnvio = millis();
-
-    char buffer[10];
-
-    valorAnalogico = analogRead(Temperatura1Pin);
-    itoa(valorAnalogico, buffer, 10);
-    client.publish(TOPIC_TEMPERATURA_1, buffer);
-
-    valorAnalogico = analogRead(Temperatura2Pin);
-    itoa(valorAnalogico, buffer, 10);
-    client.publish(TOPIC_TEMPERATURA_2, buffer);
-
-    valorAnalogico = analogRead(TemperaturaExtPin);
-    itoa(valorAnalogico, buffer, 10);
-    client.publish(TOPIC_TEMPERATURA_EXTERIOR, buffer);
-
-    valorAnalogico = analogRead(TensionL1Pin);
-    itoa(valorAnalogico, buffer, 10);
-    client.publish(TOPIC_TENSION_L1, buffer);
-
-    valorAnalogico = analogRead(CorrienteL1Pin);
-    itoa(valorAnalogico, buffer, 10);
-    client.publish(TOPIC_CORRIENTE_L1, buffer);
-
-    int puerta = digitalRead(BttnPuertaPin);
-    client.publish(TOPIC_ESTADO_PUERTA, puerta ? "1" : "0");
+    Serial.println("\n===== ⚙️ PARÁMETROS DE CONTROL =====");
+        
+        // 1. Parámetros de Operación Normal
+        Serial.printf("📍 Set Point: %.1f °C\n", Referencia_Temperatura);
+        Serial.printf("📏 Histéresis: %.1f °C\n", Ventana_Temperatura);
+        
+        Serial.println("----- 🚨 UMBRALES DE ALARMA -----");
+        
+        // 2. Umbrales de Aviso (Preventivos)
+        Serial.printf("⚠️ Aviso Alta:  > %.1f °C\n", Aviso_Temperatura_Alta);
+        Serial.printf("⚠️ Aviso Baja:  < %.1f °C\n", Aviso_Temperatura_Baja);
+        
+        // 3. Umbrales de Alarma (Críticos)
+        Serial.printf("🛑 Alarma Alta: > %.1f °C\n", Alarma_Temperatura_Alta);
+        Serial.printf("🛑 Alarma Baja: < %.1f °C\n", Alarma_Temperatura_Baja);
+        
+        Serial.println("==================================\n");
+        Serial.printf("anomalia detectada: %s\n", Anomalia ? "SÍ" : "NO");
   }
 }
