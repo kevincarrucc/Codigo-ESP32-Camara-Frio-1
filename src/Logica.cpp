@@ -35,8 +35,11 @@ const unsigned long Intermitencia_Alerta = 1000; // Intermitencia de la alerta d
 unsigned long Ultimo_Alerta_Puerta = 0; // Variable para almacenar el tiempo del último parpadeo de la alerta de puerta abierta
 const unsigned long Espera_Anomalia = 60000;  //1800000;   Espera de 30 minutos para detectar una anomalía en el funcionamiento de los motores, si alguno de los motores lleva encendido más de este tiempo, se detecta una anomalía
 
-unsigned long ultimoTiempoCambioLuz = 0;
-const unsigned long tiempoDebounce = 200; // 200 milisegundos de "bloqueo"
+//unsigned long ultimoTiempoCambioLuz = 0;
+//const unsigned long tiempoDebounce = 200; // 200 milisegundos de "bloqueo"
+unsigned long lastDebounceTime = 0;
+const unsigned long debounceDelay = 50; // ms
+int lastReading = HIGH;
 // Esto le dice a Logica.cpp: "Busca estos objetos en el main"
 extern Motor Motor_1;
 extern Motor Motor_2;
@@ -161,7 +164,48 @@ void Alerta_Puerta(void) {
 }
 
 void Luz_Interior(void) {
+
+    int reading = digitalRead(Pulsador_Luz_Pin);
+
+    if (reading != lastReading) {
+    lastDebounceTime = millis();
+    }
+
+    if ((millis() - lastDebounceTime) > debounceDelay) {
+
+    if (reading == LOW && lastButtonState == HIGH) {
+
+        Estado_Luz = !Estado_Luz;
+
+        digitalWrite(Actuador_Luz_Camara, Estado_Luz);
+
+        client.publish(TOPIC_ACT_LUZ_CAMARA, Estado_Luz ? "1" : "0");
+        client.publish(TOPIC_ACT_WEB_LUZ_CAMARA, Estado_Luz ? "1" : "0");
+    }
+
+    lastButtonState = reading;
+    }
+
+    lastReading = reading;
+
+    /*
     int lecturaActualTecla = digitalRead(Pulsador_Luz_Pin);
+
+     if(lecturaActualTecla == LOW && lastButtonState == HIGH){
+
+    Estado_Luz = !Estado_Luz;
+
+    digitalWrite(Actuador_Luz_Camara, Estado_Luz);
+
+    client.publish(TOPIC_ACT_LUZ_CAMARA, Estado_Luz ? "1" : "0");
+    client.publish(TOPIC_ACT_WEB_LUZ_CAMARA, Estado_Luz ? "1" : "0");
+    
+    }
+
+    lastButtonState = lecturaActualTecla;
+    */
+   
+    /*
     unsigned long tiempoActual = millis(); // El tiempo ahora mismo
 
     // 2. Inicialización
@@ -197,6 +241,7 @@ void Luz_Interior(void) {
         client.publish(TOPIC_ACT_LUZ_CAMARA, Estado_Luz ? "1" : "0");
         
     }
+        */
 }
 
 void Funcionamiento_Periodico_M2 (void) {

@@ -59,8 +59,8 @@ const char* TOPIC_ACT_WEB_LUZ_CAMARA = ACT_WEB_LUZ_CAMARA;
 
 // --- Alarmas y Seguridad (Crucial para el monitoreo remoto) ---
 const char* TOPIC_ESTADO_PRESENCIA_FASE = ESTADO_PRESENCIA_FASE;        // Aviso_Ausencia
-const char* TOPIC_ALERTA_ANOMALIA = ALERTA_ANOMALIA;  // Anomalia (30 min)
-const char* TOPIC_ALERTA_PUERTA = ALERTA_PUERTA;      // Alerta_Puerta_Abierta
+const char* TOPIC_ALERTA_ANOMALIA = ESTADO_ANOMALIA;  // Anomalia (30 min)
+const char* TOPIC_ALERTA_PUERTA = ESTADO_ALERTA_PUERTA;      // Alerta_Puerta_Abierta
 
 //variables de control
 const char* TOPIC_SET_POINT_TEMPERATURA = SET_POINT_TEMPERATURA;
@@ -138,7 +138,10 @@ void callback(char* topic, unsigned char* payload, unsigned int length) {
 
    if (strcmp(topic, TOPIC_ACT_WEB_LUZ_CAMARA) == 0) {
 
-    Estado_Web_Luz = payload[0] - '0';
+    Estado_Luz = payload[0] - '0';
+
+    digitalWrite(Actuador_Luz_Camara, Estado_Luz);
+    client.publish(TOPIC_ACT_LUZ_CAMARA, Estado_Luz ? "1" : "0");
    }
     if (strcmp(topic, TOPIC_SET_POINT_TEMPERATURA) == 0) {
 
@@ -199,7 +202,8 @@ void setup_wifi() {
 void reconnect() {
   while (!client.connected()) {
     Serial.print("Attempting MQTT connection...");
-    String clientId = "ESP32-" + String(random(0xffff), HEX);
+    String clientId = "ESP32-";
+    clientId += String(random(0xffff), HEX);
 if (client.connect(clientId.c_str(), mqtt_username, mqtt_password)) {
       Serial.println("connected");
       client.subscribe(TOPIC_ACT_LUZ_CAMARA);/*
@@ -241,6 +245,9 @@ void procesarLogicaControl() {
   if (millis() - ultimoEnvio >= intervaloEnvio) {
     ultimoEnvio = millis();
     char buffer[10];
+
+    //client.publish(TOPIC_ACT_LUZ_CAMARA, Estado_Luz ? "1" : "0");
+    //client.publish(TOPIC_ACT_WEB_LUZ_CAMARA, Estado_Luz ? "1" : "0"); estas dos estan en LOGICA > funcion luzinterior, ubicarlas aca hace que responda mas lento 
 
   // 4. Envío de Temperaturas Escaladas 
     // dtostrf(variable, ancho_total, decimales, buffer)
