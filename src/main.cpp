@@ -9,6 +9,9 @@
 #include "Logica.h"
 #include "Entradas.h"
 #include "Escalado.h"
+#include "Teclado.h"
+#include "Display.h"
+#include "Planta.h"
 //firebase
 #include <Firebase_ESP_Client.h> // Asegúrate de tener esta librería instalada
 #include <addons/TokenHelper.h>
@@ -17,6 +20,10 @@
 FirebaseData fbdo_stream; // Objeto para el flujo de datos en tiempo real
 FirebaseAuth auth;
 FirebaseConfig config_fb;
+
+Teclado teclado(0x20);
+Display display(0x27);
+Planta planta(teclado, display);
 
 bool Estado_Luz = false;
 bool Estado_Web_Luz = false;
@@ -75,12 +82,17 @@ void setup() {
   Serial.begin(115200);
   delay(1000);
 
+    teclado.begin();
+    display.begin();
+    planta.begin();
+
 void streamTimeoutCallback(bool timeout);
   // Configuración de pines extra y comunicaciones
   inicializarHardware();      // Configura INPUT_PULLUP y otros pines en Entradas.cpp
   inicializarComunicaciones(); // Conecta WiFi y MQTT en Red.cpp
 
   Serial.println(">>> HELADERA INDUSTRIAL ONLINE <<<");
+
 }
 
 // --- 5. LOOP PRINCIPAL ---
@@ -97,6 +109,7 @@ void loop() {
   Funcionamiento_Periodico_M2();   // Rotación de motores
   Control_Anomalias();             // Seguridad por tiempo de encendido
   procesarLogicaControl();           // Procesa la lógica de control de motores y alertas (en Logica.cpp)
+  planta.update();                 // Actualiza la pantalla y maneja el teclado (en Planta.cpp)
   
   static unsigned long ultimoMonitor = 0;
   if (millis() - ultimoMonitor >= 2000) { // Cada 2 segundos
