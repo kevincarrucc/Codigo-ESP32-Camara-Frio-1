@@ -70,7 +70,12 @@ void Planta::manejarTecla(char tecla)
         if (tecla == 'A')
             actual = PANTALLA_FASES;
         if (tecla == 'D')
-            actual = PANTALLA_CONFIGURACION;
+            {
+            if (logueado)
+                actual = PANTALLA_CONFIGURACION;
+            else
+                actual = PANTALLA_LOGIN;
+        }
         break;
 
     case PANTALLA_FASES:
