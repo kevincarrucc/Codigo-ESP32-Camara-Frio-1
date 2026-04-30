@@ -26,8 +26,8 @@ extern PubSubClient client;
 
 extern Parpadeo Coneccion_Wifi; // Instancia para el parpadeo de la conexión WiFi
 
-// Instancia para el ADS1015
-Adafruit_ADS1015 ads; 
+// Instancia para el ADS1115
+Adafruit_ADS1115 ads; 
 
 const char* ssid = WIFI_SSID;
 const char* password = WIFI_PASSWORD;
@@ -79,7 +79,6 @@ const char* TOPIC_AVISO_TEMPERATURA_BAJA = AVISO_TEMPERATURA_BAJA;
 
 
 //unsigned long ultimoEnvio = 0;
-const unsigned long intervaloEnvio = 10000;
 //
 static const char* root_ca PROGMEM = R"EOF(
 -----BEGIN CERTIFICATE-----

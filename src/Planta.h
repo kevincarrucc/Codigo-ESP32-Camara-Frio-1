@@ -40,6 +40,7 @@ private:
 
     // -------- CONTROL --------
     unsigned long ultimoUpdate = 0;
+    unsigned long ultimoRedibujoPantalla = 0;
 
 public:
     Planta(Teclado& t, Display& d);
@@ -50,6 +51,7 @@ public:
 private:
     void manejarTecla(char tecla);
     void actualizarPantalla();
+    void refrescarPantalla();
 
     // Edición genérica
     void editarFloat(char tecla, float &variable, Pantalla pantallaVolver);

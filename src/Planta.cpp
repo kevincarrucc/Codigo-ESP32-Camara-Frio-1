@@ -1,5 +1,14 @@
 #include "Planta.h"
 #include "Variables.h"
+#include <PubSubClient.h>
+
+extern PubSubClient client;
+extern const char* TOPIC_SET_POINT_TEMPERATURA;
+extern const char* TOPIC_SET_POINT_HISTERESIS;
+extern const char* TOPIC_ALARMA_TEMPERATURA_ALTA;
+extern const char* TOPIC_ALARMA_TEMPERATURA_BAJA;
+extern const char* TOPIC_AVISO_TEMPERATURA_ALTA;
+extern const char* TOPIC_AVISO_TEMPERATURA_BAJA;
 
 Planta::Planta(Teclado &t, Display &d) : teclado(t), display(d) {}
 
@@ -20,6 +29,11 @@ void Planta::update()
     }
 
     actualizarPantalla();
+    if (millis() - ultimoUpdate >= 2000)
+    {
+        ultimoUpdate = millis();
+        refrescarPantalla();
+    }
 }
 
 // ------------------ EDICIÓN ------------------
@@ -35,7 +49,7 @@ void Planta::editarFloat(char tecla, float &variable, Pantalla pantallaVolver)
 
     if (tecla >= '0' && tecla <= '9')
     {
-        if (buffer.length() < 6)
+        if (buffer.length() < 2)
         {
             buffer += tecla;
         }
@@ -46,6 +60,37 @@ void Planta::editarFloat(char tecla, float &variable, Pantalla pantallaVolver)
         if (buffer.length() > 0)
         {
             variable = buffer.toFloat();
+
+            if (client.connected())
+            {
+                char publishBuffer[16];
+                dtostrf(variable, 4, 1, publishBuffer);
+
+                if (actual == PANTALLA_CONFIG_TEMPERATURA)
+                {
+                    client.publish(TOPIC_SET_POINT_TEMPERATURA, publishBuffer);
+                }
+                else if (actual == PANTALLA_CONFIG_HISTERESIS)
+                {
+                    client.publish(TOPIC_SET_POINT_HISTERESIS, publishBuffer);
+                }
+                else if (actual == PANTALLA_CONFIG_ALARMA_BAJO)
+                {
+                    client.publish(TOPIC_ALARMA_TEMPERATURA_BAJA, publishBuffer);
+                }
+                else if (actual == PANTALLA_CONFIG_ALARMA_ALTO)
+                {
+                    client.publish(TOPIC_ALARMA_TEMPERATURA_ALTA, publishBuffer);
+                }
+                else if (actual == PANTALLA_CONFIG_AVISO_BAJO)
+                {
+                    client.publish(TOPIC_AVISO_TEMPERATURA_BAJA, publishBuffer);
+                }
+                else if (actual == PANTALLA_CONFIG_AVISO_ALTO)
+                {
+                    client.publish(TOPIC_AVISO_TEMPERATURA_ALTA, publishBuffer);
+                }
+            }
         }
         editando = false;
         actual = pantallaVolver;
@@ -62,6 +107,8 @@ void Planta::editarFloat(char tecla, float &variable, Pantalla pantallaVolver)
 
 void Planta::manejarTecla(char tecla)
 {
+    Serial.print("Tecla: ");
+    Serial.println(tecla);
 
     switch (actual)
     {
@@ -131,6 +178,7 @@ void Planta::manejarTecla(char tecla)
         {
             buffer = "";
             actual = PANTALLA_PRINCIPAL;
+            
         }
 
         break;
@@ -192,6 +240,7 @@ void Planta::manejarTecla(char tecla)
 
     case PANTALLA_CONFIGURACION:
         if (tecla == 'C')
+            logueado = false;
             actual = PANTALLA_PRINCIPAL;
         if (tecla == '1')
             actual = PANTALLA_CONFIG_TEMPERATURA;
@@ -257,8 +306,12 @@ void Planta::manejarTecla(char tecla)
     void Planta::actualizarPantalla()
     {
 
-        if (actual != anterior || editando)
-        {
+unsigned long ahora = millis();
+    if (actual != anterior || editando || buffer.length() > 0)
+    {
+        if (actual == anterior && ahora - ultimoRedibujoPantalla < 500) {
+            return;
+        }
 
             switch (actual)
             {
@@ -345,5 +398,98 @@ void Planta::manejarTecla(char tecla)
             }
 
             anterior = actual;
+            ultimoRedibujoPantalla = ahora;
+        }
+    }
+
+    void Planta::refrescarPantalla()
+    {
+
+        if (!editando && buffer.length() == 0)
+        {
+
+            switch (actual)
+            {
+
+            case PANTALLA_PRINCIPAL:
+                display.pantallaPrincipal(
+                    Temperatura_Promedio,
+                    Referencia_Temperatura,
+                    Ventana_Temperatura);
+                break;
+
+            case PANTALLA_FASES:
+                display.pantallaFases(
+                    Ausencia_Fase1,
+                    Ausencia_Fase2,
+                    Ausencia_Fase3);
+                break;
+            
+            case PANTALLA_LOGIN:
+                display.pantallaLogin(buffer);
+                break;
+
+            case PANTALLA_NUEVA_CLAVE:
+                display.pantallaNuevaClave(buffer, repitiendoClave);
+                break;
+
+            case PANTALLA_CONFIGURACION:
+                display.pantallaConfig();
+                break;
+
+            case PANTALLA_CONFIG_TEMPERATURA:
+                display.pantallaConfigTemp(
+                    Referencia_Temperatura,
+                    buffer,
+                    editando);
+                break;
+
+            case PANTALLA_CONFIG_HISTERESIS:
+                display.pantallaConfigHisteresis(
+                    Ventana_Temperatura,
+                    buffer,
+                    editando);
+                break;
+
+            case PANTALLA_MENU_CONFIG_AVISOS:
+                display.pantallaMenuConfigAvisos();
+                break;
+
+            case PANTALLA_MENU_CONFIG_ALARMAS:
+                display.pantallaMenuConfigAlarmas();
+                break;
+
+            case PANTALLA_CONFIG_AVISO_BAJO:
+                display.pantallaConfigAvisoBajo(
+                    Aviso_Temperatura_Baja,
+                    buffer,
+                    editando);
+                break;
+
+            case PANTALLA_CONFIG_AVISO_ALTO:
+                display.pantallaConfigAvisoAlto(
+                    Aviso_Temperatura_Alta,
+                    buffer,
+                    editando);
+                break;
+
+            case PANTALLA_CONFIG_ALARMA_BAJO:
+                display.pantallaConfigAlarmaBajo(
+                    Alarma_Temperatura_Baja,
+                    buffer,
+                    editando);
+                break;
+
+            case PANTALLA_CONFIG_ALARMA_ALTO:
+                display.pantallaConfigAlarmaAlto(
+                    Alarma_Temperatura_Alta,
+                    buffer,
+                    editando);
+                break;
+
+            case PANTALLA_ALERTAS:
+                display.pantallaAlertas();
+                break;
+            }
         }
     }
