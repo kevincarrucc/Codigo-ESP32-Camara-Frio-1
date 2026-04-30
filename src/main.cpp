@@ -9,6 +9,9 @@
 #include "Logica.h"
 #include "Entradas.h"
 #include "Escalado.h"
+#include "Teclado.h"
+#include "Display.h"
+#include "Planta.h"
 //firebase
 #include <Firebase_ESP_Client.h> // Asegúrate de tener esta librería instalada
 #include <addons/TokenHelper.h>
@@ -17,6 +20,10 @@
 FirebaseData fbdo_stream; // Objeto para el flujo de datos en tiempo real
 FirebaseAuth auth;
 FirebaseConfig config_fb;
+
+Teclado teclado(0x26);
+Display display(0x27);
+Planta planta(teclado, display);
 
 bool Estado_Luz = false;
 bool Estado_Web_Luz = false;
@@ -31,6 +38,11 @@ bool Ausencia_Fase1=false, Ausencia_Fase2=false, Ausencia_Fase3=false;
 int lastButtonState = HIGH;
 unsigned long ultimoEnvio = 0;
 unsigned long Arranque_M1 = 0, Arranque_M2 = 0;
+
+// Definiciones adicionales
+int16_t Corriente_L1_Lectura = 0;
+int16_t Corriente_L2_Lectura = 0;
+int16_t Corriente_L3_Lectura = 0;
 
 float Referencia_Temperatura = 3.0; 
 float Ventana_Temperatura = 2.0;      
@@ -56,6 +68,11 @@ bool Estado_Alarma_Temperatura_Baja = false;
 bool Estado_Aviso_Temperatura_Alta = false;
 bool Estado_Aviso_Temperatura_Baja = false;
 
+// Definiciones de variables globales faltantes
+unsigned long intervaloEnvio = 10000;
+String claveSistema = "1234";
+String bufferClave = "";
+
 // --- 2. OBJETOS DE RED ---
 WiFiClientSecure espClient;
 PubSubClient client(espClient);
@@ -75,16 +92,23 @@ void setup() {
   Serial.begin(115200);
   delay(1000);
 
+    setup_I2C(); // Configura el bus I2C (en Entradas.cpp)
+    teclado.begin();
+    display.begin();
+    planta.begin();
+
 void streamTimeoutCallback(bool timeout);
   // Configuración de pines extra y comunicaciones
   inicializarHardware();      // Configura INPUT_PULLUP y otros pines en Entradas.cpp
   inicializarComunicaciones(); // Conecta WiFi y MQTT en Red.cpp
 
   Serial.println(">>> HELADERA INDUSTRIAL ONLINE <<<");
+
 }
 
 // --- 5. LOOP PRINCIPAL ---
 void loop() {
+  loop_I2C(); // Mantiene el bus I2C activo (en Entradas.cpp)
   Escalar(); // Lee y escala sensores (en Escalado.cpp)
   // A. Gestión de Red y Mensajes MQTT (en Entradas.cpp)
   //procesarLogicaControl(); 
@@ -97,10 +121,12 @@ void loop() {
   Funcionamiento_Periodico_M2();   // Rotación de motores
   Control_Anomalias();             // Seguridad por tiempo de encendido
   procesarLogicaControl();           // Procesa la lógica de control de motores y alertas (en Logica.cpp)
+  planta.update();                 // Actualiza la pantalla y maneja el teclado (en Planta.cpp)
   
   static unsigned long ultimoMonitor = 0;
   if (millis() - ultimoMonitor >= 2000) { // Cada 2 segundos
     ultimoMonitor = millis();
+    /*
     Serial.println("---------- ESTADO HELADERA ----------");
     Serial.print("Temp 1: "); Serial.print(Temperatura_C1); Serial.println(" °C");
     Serial.print("Temp 2: "); Serial.print(Temperatura_C2); Serial.println(" °C");
@@ -109,12 +135,23 @@ void loop() {
     Serial.print("Ventana (+/-): "); Serial.print(Ventana_Temperatura); Serial.println(" °C");
     Serial.print("MOTOR 1: "); Serial.println(digitalRead(Actuador_M1) ? "ENCENDIDO" : "APAGADO");
     Serial.print("MOTOR 2: "); Serial.println(digitalRead(Actuador_M2) ? "ENCENDIDO" : "APAGADO");
-    Serial.println("-------------------------------------");
-    static unsigned long ultimoMonitor = 0;
-    Serial.println("---------- ESTADOS DE ILUMINACIÓN ----------");
+    Serial.println("---------------corriente----------------------");
     
+   Serial.println("---------------corriente----------------------");
+    Serial.print("Corriente L1: "); Serial.print(Corriente_L1_Lectura); Serial.println(" A");
+    Serial.print("Corriente L2: "); Serial.print(Corriente_L2); Serial.println(" A");
+    Serial.print("Corriente L3: "); Serial.print(Corriente_L3); Serial.println(" A");
+    static unsigned long ultimoMonitor = 0;
+    */
+    //Serial.println("---------- ESTADOS DE ILUMINACIÓN ----------");
+    char tecla = teclado.leer();
+
+    if (tecla != '\0') {
+        Serial.println(tecla);
+    }
     // 1. Lectura física del pin (GPIO 2)
     int estadoPinFisico = digitalRead(Pulsador_Luz_Pin);
+    /*
     Serial.print("Pulsador Físico (Pin 2): ");
     Serial.println(estadoPinFisico == HIGH ? "1 (ALTO)" : "0 (BAJO)");
 
@@ -151,5 +188,6 @@ void loop() {
         
         Serial.println("==================================\n");
         Serial.printf("anomalia detectada: %s\n", Anomalia ? "SÍ" : "NO");
+        */
   }
 }

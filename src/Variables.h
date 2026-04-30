@@ -35,8 +35,11 @@ extern bool Ausencia_Fase1, Ausencia_Fase2, Ausencia_Fase3, Ultimo_Estado_Luz;
 extern bool Anomalia, Aviso_Ausencia, Alerta_Puerta_Abierta, M1_Encendido, M2_Encendido, Puerta_Abierta, pulsadorLuz;
 extern int lastButtonState;
 extern unsigned long ultimoEnvio;
-extern const unsigned long intervaloEnvio;
+extern unsigned long intervaloEnvio;
 extern float Alarma_Temperatura_Alta, Alarma_Temperatura_Baja, Aviso_Temperatura_Alta, Aviso_Temperatura_Baja;
 extern bool Estado_Alarma_Temperatura_Alta, Estado_Alarma_Temperatura_Baja, Estado_Aviso_Temperatura_Alta, Estado_Aviso_Temperatura_Baja;
+
+extern String claveSistema;   // clave actual
+extern String bufferClave;        // lo que escribe el usuario
 
 #endif

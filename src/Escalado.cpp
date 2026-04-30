@@ -37,10 +37,8 @@ void Escalar(void) {
     Tension_L1 = escalarTension(analogRead(Tension_L1_Pin));
     Tension_L2 = escalarTension(analogRead(Tension_L2_Pin));
     Tension_L3 = escalarTension(analogRead(Tension_L3_Pin));
-/*
     // 3. Procesar Corrientes (Variables ya leídas del ADS)
     Corriente_L1 = escalarCorrienteADS(Corriente_L1_Lectura);
     Corriente_L2 = escalarCorrienteADS(Corriente_L2_Lectura);
     Corriente_L3 = escalarCorrienteADS(Corriente_L3_Lectura);
-*/
 }
