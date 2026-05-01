@@ -38,7 +38,7 @@ extern unsigned long ultimoEnvio;
 extern unsigned long intervaloEnvio;
 extern float Alarma_Temperatura_Alta, Alarma_Temperatura_Baja, Aviso_Temperatura_Alta, Aviso_Temperatura_Baja;
 extern bool Estado_Alarma_Temperatura_Alta, Estado_Alarma_Temperatura_Baja, Estado_Aviso_Temperatura_Alta, Estado_Aviso_Temperatura_Baja;
-extern bool Estado_Alarma, Estado_Aviso;
+extern bool Estado_Alarma, Estado_Aviso, Estado_Alarma_Alta_Anterior, Estado_Aviso_Alto_Anterior, Estado_Alarma_Baja_Anterior, Estado_Aviso_Bajo_Anterior;
 
 extern String claveSistema;   // clave actual
 extern String bufferClave;        // lo que escribe el usuario

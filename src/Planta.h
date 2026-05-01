@@ -18,6 +18,7 @@ enum Pantalla {
     PANTALLA_CONFIG_AVISO_ALTO,
     PANTALLA_CONFIG_ALARMA_BAJO,  
     PANTALLA_CONFIG_ALARMA_ALTO,
+    PANTALLA_AVISOS,
     PANTALLA_ALERTAS
 };
 
@@ -34,6 +35,9 @@ private:
     bool editando = false;
     String buffer = "";
     bool logueado = false;
+    unsigned long tiempoLogin = 0;
+    const unsigned long TIMEOUT_LOGIN = 30000; //300000; // 5 minutos
+    unsigned long ultimaActividad = 0;
     String nuevaClave1 = "";
     String nuevaClave2 = "";
     bool repitiendoClave = false;
@@ -41,6 +45,15 @@ private:
     // -------- CONTROL --------
     unsigned long ultimoUpdate = 0;
     unsigned long ultimoRedibujoPantalla = 0;
+
+    // -------- AVISOS/ALERTAS --------
+    Pantalla pantallaAnteriorAviso;
+    bool enPantallaAviso = false;
+    bool avisoReconocido = false;
+
+    Pantalla pantallaAnteriorAlerta;
+    bool enPantallaAlerta = false;
+    bool alertaReconocida = false;
 
 public:
     Planta(Teclado& t, Display& d);
@@ -52,9 +65,12 @@ private:
     void manejarTecla(char tecla);
     void actualizarPantalla();
     void refrescarPantalla();
+    void verificarTimeout();
+    void verificarAvisos();
+    void verificarAlertas();
 
     // Edición genérica
-    void editarFloat(char tecla, float &variable, Pantalla pantallaVolver);
+    void editarFloat(char tecla, float &variable, Pantalla pantallaVolver, float min, float max);
 
     // (Opcional pero recomendado)
     void limpiarBuffer();

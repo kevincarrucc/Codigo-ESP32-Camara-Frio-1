@@ -24,6 +24,7 @@ public:
     void pantallaConfigAvisoAlto(float avisoAlto, String buffer, bool editando);
     void pantallaConfigAlarmaBajo(float alarmaBaja, String buffer, bool editando);
     void pantallaConfigAlarmaAlto(float alarmaAlta, String buffer, bool editando);
+    void pantallaAvisos();
     void pantallaAlertas();
 };
 

@@ -4,6 +4,10 @@
 #include "Claves.h"
 #include <Firebase_ESP_Client.h> 
 #include <PubSubClient.h>
+#include "Planta.h"
+
+extern bool avisoReconocido;
+extern bool alertaReconocida;
 
 extern const char* TOPIC_ACT_LUZ_CAMARA;
 extern const char* TOPIC_ACT_WEB_LUZ_CAMARA;
@@ -312,17 +316,47 @@ void Control_Avisos_Temperatura(void) {
     } else if (Temperatura_Promedio > (Aviso_Temperatura_Baja + 0.5)) {
         Estado_Aviso_Temperatura_Baja = false;
     }
-
-    if (Estado_Aviso_Temperatura_Alta == true || Estado_Aviso_Temperatura_Baja == true) {
+}
+ /*   if (Estado_Aviso_Temperatura_Alta == true && Estado_Aviso_Alto_Anterior == false|| Estado_Aviso_Temperatura_Baja == true && Estado_Aviso_Bajo_Anterior == false) {
+        Estado_Aviso_Alto_Anterior = Estado_Aviso_Temperatura_Alta; // Actualizamos el estado anterior de el aviso alto
+        Estado_Aviso_Bajo_Anterior = Estado_Aviso_Temperatura_Baja; // Actualizamos el estado anterior del aviso bajo
         Estado_Aviso = true; // Si hay algún aviso de temperatura, se activa el aviso general
+        avisoReconocido = false; // Reseteamos el reconocimiento del aviso para que pueda volver a aparecer si surge otro aviso
     } else if (Estado_Aviso_Temperatura_Alta == false && Estado_Aviso_Temperatura_Baja == false) {
+        Estado_Aviso_Alto_Anterior = Estado_Aviso_Temperatura_Alta; // Actualizamos el estado anterior de el aviso alto
+        Estado_Aviso_Bajo_Anterior = Estado_Aviso_Temperatura_Baja; // Actualizamos el estado anterior del aviso bajo
         Estado_Aviso = false; // Si no hay ningún aviso de temperatura, se desactiva el aviso general
     }
 
     if (Estado_Alarma_Temperatura_Alta == true || Estado_Alarma_Temperatura_Baja == true) {
+        Estado_Alarma_Alta_Anterior = Estado_Alarma_Temperatura_Alta; // Actualizamos el estado anterior de la alarma alta
+        Estado_Alarma_Baja_Anterior = Estado_Alarma_Temperatura_Baja; // Actualizamos el estado anterior de la alarma baja
         Estado_Alarma = true; // Si hay alguna alarma de temperatura, se activa la alarma general
+        alertaReconocida = false; // Reseteamos el reconocimiento de la alerta para que pueda volver a aparecer si surge otra alerta
     } else if (Estado_Alarma_Temperatura_Alta == false && Estado_Alarma_Temperatura_Baja == false) {
+        Estado_Alarma_Alta_Anterior = Estado_Alarma_Temperatura_Alta; // Actualizamos el estado anterior de la alarma alta
+        Estado_Alarma_Baja_Anterior = Estado_Alarma_Temperatura_Baja; // Actualizamos el estado anterior de la alarma baja
         Estado_Alarma = false; // Si no hay ninguna alarma de temperatura, se desactiva la alarma general
     }
-   
 }
+   
+  // detectar flancos
+bool flancoAvisoAlto = Estado_Aviso_Temperatura_Alta && !Estado_Aviso_Alto_Anterior;
+bool flancoAvisoBajo = Estado_Aviso_Temperatura_Baja && !Estado_Aviso_Bajo_Anterior;
+
+// activar aviso general
+if (Estado_Aviso_Temperatura_Alta || Estado_Aviso_Temperatura_Baja) {
+    Estado_Aviso = true;
+} else {
+    Estado_Aviso = false;
+}
+
+// reset de reconocimiento SOLO si aparece uno nuevo
+if (flancoAvisoAlto || flancoAvisoBajo) {
+    avisoReconocido = false;
+}
+
+// actualizar históricos (SIEMPRE al final)
+Estado_Aviso_Alto_Anterior = Estado_Aviso_Temperatura_Alta;
+Estado_Aviso_Bajo_Anterior = Estado_Aviso_Temperatura_Baja;
+}*/

@@ -25,10 +25,15 @@ void Planta::update()
 
     if (tecla != '\0')
     {
+        ultimaActividad = millis();
         manejarTecla(tecla);
     }
 
+    verificarAlertas();
+    verificarAvisos();
+    verificarTimeout();
     actualizarPantalla();
+
     if (millis() - ultimoUpdate >= 2000)
     {
         ultimoUpdate = millis();
@@ -36,9 +41,60 @@ void Planta::update()
     }
 }
 
+void Planta::limpiarBuffer() {
+    buffer = "";
+    editando = false;
+}
+
+void Planta::verificarAvisos() {
+
+    // 👉 aparece SOLO si hay aviso Y no fue reconocido
+    if (Estado_Aviso && !avisoReconocido && !enPantallaAviso) {
+
+        pantallaAnteriorAviso = actual;
+        actual = PANTALLA_AVISOS;
+
+        enPantallaAviso = true;
+        anterior = (Pantalla)-1;
+    }
+
+}
+    
+
+void Planta::verificarAlertas() {
+
+    // 👉 aparece SOLO si hay alarma Y no fue reconocida
+    if (Estado_Alarma && !alertaReconocida && !enPantallaAlerta) {
+
+        pantallaAnteriorAlerta = actual;
+        actual = PANTALLA_ALERTAS;
+
+        enPantallaAlerta = true;
+        anterior = (Pantalla)-1;
+    }
+
+}
+
+void Planta::verificarTimeout() {
+
+    if (logueado) {
+
+        unsigned long ahora = millis();
+
+        if (ahora - ultimaActividad > TIMEOUT_LOGIN) {
+
+            logueado = false;
+
+            actual = PANTALLA_PRINCIPAL;
+
+            anterior = (Pantalla)-1; // 🔥 forzar refresco
+        }
+    }
+}
+
 // ------------------ EDICIÓN ------------------
 
-void Planta::editarFloat(char tecla, float &variable, Pantalla pantallaVolver)
+void Planta::editarFloat(char tecla, float &variable, Pantalla pantallaVolver, float min, float max)
 {
 
     if (!editando)
@@ -59,7 +115,14 @@ void Planta::editarFloat(char tecla, float &variable, Pantalla pantallaVolver)
     {
         if (buffer.length() > 0)
         {
-            variable = buffer.toFloat();
+            float nuevo = buffer.toFloat();
+
+
+            if (nuevo < min) nuevo = min;
+            if (nuevo > max) nuevo = max;
+
+            variable = nuevo;
+            limpiarBuffer();
 
             if (client.connected())
             {
@@ -99,6 +162,7 @@ void Planta::editarFloat(char tecla, float &variable, Pantalla pantallaVolver)
     if (tecla == 'C')
     {
         editando = false;
+        limpiarBuffer();
         actual = pantallaVolver;
     }
 }
@@ -109,6 +173,25 @@ void Planta::manejarTecla(char tecla)
 {
     Serial.print("Tecla: ");
     Serial.println(tecla);
+
+    // Verificar pantallas de aviso/alerta ANTES del switch
+    if (enPantallaAviso) {
+        if (tecla == '#') {
+            avisoReconocido = true;
+            enPantallaAviso = false;
+            actual = pantallaAnteriorAviso;
+        }
+        return;
+    }
+
+    if (enPantallaAlerta) {
+        if (tecla == '#') {
+            alertaReconocida = true;
+            enPantallaAlerta = false;
+            actual = pantallaAnteriorAlerta;
+        }
+        return;
+    }
 
     switch (actual)
     {
@@ -157,20 +240,21 @@ void Planta::manejarTecla(char tecla)
             }
         }
 
-        // confirmar
-        if (tecla == '#')
-        {
+        //confirmar
+        if (tecla == '#') {
 
-            if (buffer == claveSistema)
-            {
-                logueado = true;
-                actual = PANTALLA_CONFIGURACION;
-            }
-            else
-            {
-                // clave incorrecta → limpiar
-                buffer = "";
-            }
+        if (buffer == claveSistema) {
+
+        logueado = true;
+
+        tiempoLogin = millis();
+        ultimaActividad = millis();
+        actual = PANTALLA_CONFIGURACION;
+        } 
+        else 
+        {
+        buffer = "";
+        }
         }
 
         // salir
@@ -239,9 +323,14 @@ void Planta::manejarTecla(char tecla)
         break;
 
     case PANTALLA_CONFIGURACION:
-        if (tecla == 'C')
-            logueado = false;
+        if (!logueado) {
+        actual = PANTALLA_LOGIN;
+        break;
+        }
+        if (tecla == 'C') {
             actual = PANTALLA_PRINCIPAL;
+            limpiarBuffer();
+        }
         if (tecla == '1')
             actual = PANTALLA_CONFIG_TEMPERATURA;
         if (tecla == '2')
@@ -253,11 +342,11 @@ void Planta::manejarTecla(char tecla)
         break;
 
     case PANTALLA_CONFIG_TEMPERATURA:
-        editarFloat(tecla, Referencia_Temperatura, PANTALLA_CONFIGURACION);
+        editarFloat(tecla, Referencia_Temperatura, PANTALLA_CONFIGURACION,3, 7);
         break;
 
     case PANTALLA_CONFIG_HISTERESIS:
-        editarFloat(tecla, Ventana_Temperatura, PANTALLA_CONFIGURACION);
+        editarFloat(tecla, Ventana_Temperatura, PANTALLA_CONFIGURACION, 1, 5);
         break;
 
     case PANTALLA_MENU_CONFIG_AVISOS:
@@ -279,19 +368,24 @@ void Planta::manejarTecla(char tecla)
         break;
 
     case PANTALLA_CONFIG_AVISO_BAJO:
-        editarFloat(tecla, Aviso_Temperatura_Baja, PANTALLA_CONFIGURACION);
+        editarFloat(tecla, Aviso_Temperatura_Baja, PANTALLA_CONFIGURACION, 0, 3);
         break;
 
     case PANTALLA_CONFIG_AVISO_ALTO:
-        editarFloat(tecla, Aviso_Temperatura_Alta, PANTALLA_CONFIGURACION);
+        editarFloat(tecla, Aviso_Temperatura_Alta, PANTALLA_CONFIGURACION, 10, 15);
         break;
 
     case PANTALLA_CONFIG_ALARMA_BAJO:
-        editarFloat(tecla, Alarma_Temperatura_Baja, PANTALLA_CONFIGURACION);
+        editarFloat(tecla, Alarma_Temperatura_Baja, PANTALLA_CONFIGURACION, 0, 3);
         break;
 
     case PANTALLA_CONFIG_ALARMA_ALTO:
-        editarFloat(tecla, Alarma_Temperatura_Alta, PANTALLA_CONFIGURACION);
+        editarFloat(tecla, Alarma_Temperatura_Alta, PANTALLA_CONFIGURACION, 10, 18);
+        break;
+
+    case PANTALLA_AVISOS:
+        if (tecla == 'C')
+            actual = PANTALLA_PRINCIPAL;
         break;
 
     case PANTALLA_ALERTAS:
@@ -301,12 +395,11 @@ void Planta::manejarTecla(char tecla)
     }
 }
 
-    // ------------------ DISPLAY ------------------
+// ------------------ DISPLAY ------------------
 
-    void Planta::actualizarPantalla()
-    {
-
-unsigned long ahora = millis();
+void Planta::actualizarPantalla()
+{
+    unsigned long ahora = millis();
     if (actual != anterior || editando || buffer.length() > 0)
     {
         if (actual == anterior && ahora - ultimoRedibujoPantalla < 500) {
@@ -390,6 +483,10 @@ unsigned long ahora = millis();
                     Alarma_Temperatura_Alta,
                     buffer,
                     editando);
+                break;
+
+            case PANTALLA_AVISOS:
+                display.pantallaAvisos();
                 break;
 
             case PANTALLA_ALERTAS:
@@ -485,6 +582,10 @@ unsigned long ahora = millis();
                     Alarma_Temperatura_Alta,
                     buffer,
                     editando);
+                break;
+
+            case PANTALLA_AVISOS:
+                display.pantallaAvisos();
                 break;
 
             case PANTALLA_ALERTAS:

@@ -30,7 +30,7 @@ void mostrarEdicion(LiquidCrystal_I2C &lcd, float actual, String buffer, bool ed
     }
 
     lcd.setCursor(0,3);
-    lcd.print("C-Atras   #-Confirm");
+    lcd.print("C-Atras   #-Confirm.");
 }
 
 void Display::pantallaPrincipal(float Temperatura_Promedio, float Referencia_Temperatura, float Ventana_Temperatura) { 
@@ -46,12 +46,16 @@ void Display::pantallaPrincipal(float Temperatura_Promedio, float Referencia_Tem
     lcd.print("Min:"); 
     lcd.setCursor(14, 1); 
     lcd.print(Referencia_Temperatura-Ventana_Temperatura,0); 
+    lcd.setCursor(0, 2); 
+    lcd.print("SP:");
+    lcd.setCursor(3, 2); 
+    lcd.print(Referencia_Temperatura,0);
     lcd.setCursor(10, 2); 
     lcd.print("Max:"); 
     lcd.setCursor(14, 2); 
     lcd.print(Referencia_Temperatura+Ventana_Temperatura,0); 
     lcd.setCursor(0, 3); 
-    lcd.print("A-Fases     D-Config"); }
+    lcd.print("A-Fases    D-Config."); }
 
 void Display::pantallaFases(bool Ausencia_Fase1, bool Ausencia_Fase2, bool Ausencia_Fase3) {
     lcd.clear();
@@ -81,7 +85,7 @@ void Display::pantallaFases(bool Ausencia_Fase1, bool Ausencia_Fase2, bool Ausen
     }
 
     lcd.setCursor(0,3);
-    lcd.print("B-Temp.     D-Config");
+    lcd.print("B-Temp.    D-Config.");
 }
 
 void Display::pantallaLogin(const String &buffer) {
@@ -103,7 +107,7 @@ void Display::pantallaLogin(const String &buffer) {
     lcd.print("B- Nueva clave");//falta toda la logica para esta funcionalidad
 
     lcd.setCursor(0,3);
-    lcd.print("C-Atras   #-OK");
+    lcd.print("C-Atras         #-OK");
 }
 
 
@@ -128,7 +132,7 @@ void Display::pantallaNuevaClave(const String &buffer, bool repitiendo) {
     }
 
     lcd.setCursor(0,3);
-    lcd.print("C-Atras   #-OK");
+    lcd.print("C-Atras         #-OK");
 }
 
 
@@ -144,7 +148,7 @@ void Display::pantallaConfig() {
     lcd.print("3-Avisos 4-Alarmas");
 
     lcd.setCursor(0,3);
-    lcd.print("C-Atras   #-Confirm");
+    lcd.print("C-Atras   #-Confirm.");
 }
 
 void Display::pantallaConfigTemp(float val, String buffer, bool editando) {
@@ -175,7 +179,7 @@ void Display::pantallaMenuConfigAvisos() {
     lcd.print("2-Temp. alta");
 
     lcd.setCursor(0,3);
-    lcd.print("C-Atras   #-Confirm");
+    lcd.print("C-Atras   #-Confirm.");
 }
 
 void Display::pantallaMenuConfigAlarmas() {
@@ -190,7 +194,7 @@ void Display::pantallaMenuConfigAlarmas() {
     lcd.print("2-Temp. alta");
 
     lcd.setCursor(0,3);
-    lcd.print("C-Atras   #-Confirm");
+    lcd.print("C-Atras   #-Confirm.");
 }
 
 void Display::pantallaConfigAvisoBajo(float val, String buffer, bool editando) {
@@ -223,12 +227,34 @@ void Display::pantallaConfigAlarmaAlto(float val, String buffer, bool editando) 
 
     mostrarEdicion(lcd, val, buffer, editando);
 }
-   
+
+void Display::pantallaAvisos() {
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("   ADVERTENCIA!!!");
+
+    lcd.setCursor(0,1);
+    lcd.print(" Hay avisos activos");
+
+    lcd.setCursor(0,2);
+    lcd.print("Verificar pagina web");
+
+    lcd.setCursor(0,3);
+    lcd.print("          #-Confirm.");
+}
+
+
 void Display::pantallaAlertas() {
     lcd.clear();
     lcd.setCursor(0,0);
-    lcd.print("Alertas activas:");
+    lcd.print("      ALERTA!!!");
+
+    lcd.setCursor(0,1);
+    lcd.print("Hay alarmas activas");
+
+    lcd.setCursor(0,2);
+    lcd.print("Verificar pagina web");
 
     lcd.setCursor(0,3);
-    lcd.print("C-Atras   #-Config");
+    lcd.print("          #-Confirm.");
 }

@@ -39,6 +39,9 @@ int lastButtonState = HIGH;
 unsigned long ultimoEnvio = 0;
 unsigned long Arranque_M1 = 0, Arranque_M2 = 0;
 
+bool avisoReconocido = false;
+bool alertaReconocida = false;
+
 // Definiciones adicionales
 int16_t Corriente_L1_Lectura = 0;
 int16_t Corriente_L2_Lectura = 0;
@@ -54,6 +57,8 @@ bool Anomalia = false, Aviso_Ausencia = false, Alerta_Puerta_Abierta = false;
 bool M1_Encendido = false, M2_Encendido = false, Puerta_Abierta = false;
 bool P_Pulsador_Luz = false; 
 bool Estado_Alarma = false, Estado_Aviso = false;
+bool Estado_Alarma_Alta_Anterior = false, Estado_Aviso_Alto_Anterior = false;
+bool Estado_Alarma_Baja_Anterior = false, Estado_Aviso_Bajo_Anterior = false;
 
 
 // Valores de umbrales (puedes ajustar los números)
