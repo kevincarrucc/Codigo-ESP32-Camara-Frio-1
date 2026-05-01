@@ -6,7 +6,7 @@
 // Funciones para convertir lecturas crudas a valores reales
 float escalarTemperatura(int bits);
 float escalarTension(int bits);
-float escalarCorrienteADS(int16_t bitsADS); // Para el ADS1015 (divisor 2047)
+float escalarCorrienteADS(uint16_t bitsADS); // Para el ADS1015 (divisor 2047)
 
 //Prueba
 // Convierte bits de ADC interno (0-4095) a Voltios (0-3.3V)

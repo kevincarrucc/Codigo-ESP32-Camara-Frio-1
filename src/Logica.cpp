@@ -27,13 +27,13 @@ const unsigned long Espera_Respuesta_M1 = 650000; // Espera de 15 minutos para l
 //unsigned long Arranque_M1 = 0; // Variable para almacenar el tiempo en que se activó el motor 1
 const unsigned long Arranque_Periodico_M2 = 86400000; // Arranque periódico del motor 2 cada 24 horas
 unsigned long Ultimo_Arranque_M2 = 0; // Variable para almacenar el tiempo del último arranque del motor 2
-const unsigned long Espera_Respuesta_M2 = 300000; // Espera de 5 minutos para la respuesta del motor 2
+const unsigned long Espera_Respuesta_M2 = 650000; // Espera de 5 minutos para la respuesta del motor 2
 //unsigned long Arranque_M2 = 0; // Variable para almacenar el tiempo en que se activó el motor 2
 const unsigned long Retardo_Alerta_Puerta = 60000; // Retardo de 1 minuto para la alerta de puerta abierta
 unsigned long High_Puerta = 0; // Variable para almacenar el tiempo en que se activó la alerta de puerta abierta
 const unsigned long Intermitencia_Alerta = 1000; // Intermitencia de la alerta de puerta abierta (1 segundo)
 unsigned long Ultimo_Alerta_Puerta = 0; // Variable para almacenar el tiempo del último parpadeo de la alerta de puerta abierta
-const unsigned long Espera_Anomalia = 60000;  //1800000;   Espera de 30 minutos para detectar una anomalía en el funcionamiento de los motores, si alguno de los motores lleva encendido más de este tiempo, se detecta una anomalía
+const unsigned long Espera_Anomalia = 600000;  //1800000;   Espera de 10 minutos para detectar una anomalía en el funcionamiento de los motores, si alguno de los motores lleva encendido más de este tiempo, se detecta una anomalía
 
 //unsigned long ultimoTiempoCambioLuz = 0;
 //const unsigned long tiempoDebounce = 200; // 200 milisegundos de "bloqueo"
@@ -312,4 +312,17 @@ void Control_Avisos_Temperatura(void) {
     } else if (Temperatura_Promedio > (Aviso_Temperatura_Baja + 0.5)) {
         Estado_Aviso_Temperatura_Baja = false;
     }
+
+    if (Estado_Aviso_Temperatura_Alta == true || Estado_Aviso_Temperatura_Baja == true) {
+        Estado_Aviso = true; // Si hay algún aviso de temperatura, se activa el aviso general
+    } else if (Estado_Aviso_Temperatura_Alta == false && Estado_Aviso_Temperatura_Baja == false) {
+        Estado_Aviso = false; // Si no hay ningún aviso de temperatura, se desactiva el aviso general
+    }
+
+    if (Estado_Alarma_Temperatura_Alta == true || Estado_Alarma_Temperatura_Baja == true) {
+        Estado_Alarma = true; // Si hay alguna alarma de temperatura, se activa la alarma general
+    } else if (Estado_Alarma_Temperatura_Alta == false && Estado_Alarma_Temperatura_Baja == false) {
+        Estado_Alarma = false; // Si no hay ninguna alarma de temperatura, se desactiva la alarma general
+    }
+   
 }

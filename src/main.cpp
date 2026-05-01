@@ -53,7 +53,7 @@ bool Ultimo_Estado_Luz = false;
 bool Anomalia = false, Aviso_Ausencia = false, Alerta_Puerta_Abierta = false;
 bool M1_Encendido = false, M2_Encendido = false, Puerta_Abierta = false;
 bool P_Pulsador_Luz = false; 
-
+bool Estado_Alarma = false, Estado_Aviso = false;
 
 
 // Valores de umbrales (puedes ajustar los números)

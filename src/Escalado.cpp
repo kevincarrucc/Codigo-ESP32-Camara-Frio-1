@@ -11,11 +11,10 @@ float escalarTension(int bits) {
     return (bits * 300.0f) / 4095.0f;      // 0 a 300V
 }
 
-float escalarCorrienteADS(int16_t bitsADS) {
-    return (bitsADS * 100.0f) / 2047.0f; 
+float escalarCorrienteADS(uint16_t bitsADS) {
+    return (bitsADS * 100.0f) / 65535.0f; // 0 a 100 A
 }
 
-// --- Utilidades de Diagnóstico ---
 
 float calcularVoltiosESP32(int bits) {
     return (bits * 3.3f) / 4095.0f;
@@ -37,6 +36,7 @@ void Escalar(void) {
     Tension_L1 = escalarTension(analogRead(Tension_L1_Pin));
     Tension_L2 = escalarTension(analogRead(Tension_L2_Pin));
     Tension_L3 = escalarTension(analogRead(Tension_L3_Pin));
+
     // 3. Procesar Corrientes (Variables ya leídas del ADS)
     Corriente_L1 = escalarCorrienteADS(Corriente_L1_Lectura);
     Corriente_L2 = escalarCorrienteADS(Corriente_L2_Lectura);
