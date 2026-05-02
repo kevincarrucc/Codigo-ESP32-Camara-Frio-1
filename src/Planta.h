@@ -31,6 +31,15 @@ private:
     Pantalla actual;
     Pantalla anterior;
 
+    // -------- AVISOS/ALERTAS --------
+    Pantalla pantallaAnteriorAviso;
+    bool enPantallaAviso = false;
+    bool alertaReconocida = false;
+
+    Pantalla pantallaAnteriorAlerta;
+    bool enPantallaAlerta = false;
+    bool avisoReconocido = false;
+
     // -------- UI --------
     bool editando = false;
     String buffer = "";
@@ -46,20 +55,6 @@ private:
     unsigned long ultimoUpdate = 0;
     unsigned long ultimoRedibujoPantalla = 0;
 
-    // -------- AVISOS/ALERTAS --------
-    Pantalla pantallaAnteriorAviso;
-    bool enPantallaAviso = false;
-    bool avisoReconocido = false;
-
-    Pantalla pantallaAnteriorAlerta;
-    bool enPantallaAlerta = false;
-    bool alertaReconocida = false;
-
-public:
-    Planta(Teclado& t, Display& d);
-
-    void begin();
-    void update();
 
 private:
     void manejarTecla(char tecla);
@@ -73,7 +68,18 @@ private:
     void editarFloat(char tecla, float &variable, Pantalla pantallaVolver, float min, float max);
 
     // (Opcional pero recomendado)
-    void limpiarBuffer();
+    void limpiarBuffer(); 
+
+public:
+    Planta(Teclado& t, Display& d);
+
+    void begin();
+    void update();
+    // Planta.h (en la sección public:)
+    void dispararNuevoAviso() { avisoReconocido = false; }
+    void dispararNuevaAlerta() { alertaReconocida = false; }
+
+
 };
 
 #endif

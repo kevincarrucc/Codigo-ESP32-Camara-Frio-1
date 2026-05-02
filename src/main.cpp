@@ -92,6 +92,7 @@ Fase Fase_1(Actuador_F1, Ausencia_Fase1, Tension_L1);
 Fase Fase_2(Actuador_F2, Ausencia_Fase2, Tension_L2);
 Fase Fase_3(Actuador_F3, Ausencia_Fase3, Tension_L3);
 
+
 // --- 4. SETUP ---
 void setup() {
   Serial.begin(115200);
@@ -131,24 +132,9 @@ void loop() {
   static unsigned long ultimoMonitor = 0;
   if (millis() - ultimoMonitor >= 2000) { // Cada 2 segundos
     ultimoMonitor = millis();
-    /*
-    Serial.println("---------- ESTADO HELADERA ----------");
-    Serial.print("Temp 1: "); Serial.print(Temperatura_C1); Serial.println(" °C");
-    Serial.print("Temp 2: "); Serial.print(Temperatura_C2); Serial.println(" °C");
-    Serial.print("PROMEDIO: "); Serial.print(Temperatura_Promedio); Serial.println(" °C");
-    Serial.print("REFERENCIA: "); Serial.print(Referencia_Temperatura); Serial.println(" °C");
-    Serial.print("Ventana (+/-): "); Serial.print(Ventana_Temperatura); Serial.println(" °C");
-    Serial.print("MOTOR 1: "); Serial.println(digitalRead(Actuador_M1) ? "ENCENDIDO" : "APAGADO");
-    Serial.print("MOTOR 2: "); Serial.println(digitalRead(Actuador_M2) ? "ENCENDIDO" : "APAGADO");
-    Serial.println("---------------corriente----------------------");
-    
-   Serial.println("---------------corriente----------------------");
-    Serial.print("Corriente L1: "); Serial.print(Corriente_L1_Lectura); Serial.println(" A");
-    Serial.print("Corriente L2: "); Serial.print(Corriente_L2); Serial.println(" A");
-    Serial.print("Corriente L3: "); Serial.print(Corriente_L3); Serial.println(" A");
-    static unsigned long ultimoMonitor = 0;
-    */
-    //Serial.println("---------- ESTADOS DE ILUMINACIÓN ----------");
+    // --- DEBUG DE ALERTAS Y MQTT (Pegar al final del loop) ---
+
+
     char tecla = teclado.leer();
 
     if (tecla != '\0') {
@@ -156,43 +142,29 @@ void loop() {
     }
     // 1. Lectura física del pin (GPIO 2)
     int estadoPinFisico = digitalRead(Pulsador_Luz_Pin);
-    /*
-    Serial.print("Pulsador Físico (Pin 2): ");
-    Serial.println(estadoPinFisico == HIGH ? "1 (ALTO)" : "0 (BAJO)");
-
-    // 2. Estado de la variable unificada (La que cambia por MQTT/Firebase)
-    Serial.print("Estado Variable Web/Red (Estado_Luz): ");
-    Serial.println(Estado_Luz ? "TRUE (ENCENDER)" : "FALSE (APAGAR)");
-
-    // 3. Memoria del ciclo anterior (Para detectar flancos)
-    Serial.print("Memoria Estado Anterior (Ultimo_Estado_Luz): ");
-    Serial.println(Ultimo_Estado_Luz ? "ENCENDIDO" : "APAGADO");
-
-    // 4. Verificación real del Relé (GPIO 23)
-    int estadoRele = digitalRead(Actuador_Luz_Camara);
-    Serial.print("Estado REAL Relé/Luz (Pin 23): ");
-    Serial.println(estadoRele == HIGH ? "FÍSICAMENTE ON" : "FÍSICAMENTE OFF");
-    
-    Serial.println("--------------------------------------------");  
-
-    Serial.println("\n===== ⚙️ PARÁMETROS DE CONTROL =====");
-        
-        // 1. Parámetros de Operación Normal
-        Serial.printf("📍 Set Point: %.1f °C\n", Referencia_Temperatura);
-        Serial.printf("📏 Histéresis: %.1f °C\n", Ventana_Temperatura);
-        
-        Serial.println("----- 🚨 UMBRALES DE ALARMA -----");
-        
-        // 2. Umbrales de Aviso (Preventivos)
-        Serial.printf("⚠️ Aviso Alta:  > %.1f °C\n", Aviso_Temperatura_Alta);
-        Serial.printf("⚠️ Aviso Baja:  < %.1f °C\n", Aviso_Temperatura_Baja);
-        
-        // 3. Umbrales de Alarma (Críticos)
-        Serial.printf("🛑 Alarma Alta: > %.1f °C\n", Alarma_Temperatura_Alta);
-        Serial.printf("🛑 Alarma Baja: < %.1f °C\n", Alarma_Temperatura_Baja);
-        
-        Serial.println("==================================\n");
-        Serial.printf("anomalia detectada: %s\n", Anomalia ? "SÍ" : "NO");
-        */
+   
   }
+  static unsigned long ultimoDebug = 0;
+if (millis() - ultimoDebug >= 3000) {
+    ultimoDebug = millis();
+
+    Serial.println("\n--- [MONITOR DE SEGURIDAD] ---");
+    Serial.printf("Temp. Promedio: %.2f °C\n", Temperatura_Promedio);
+    
+    Serial.print(">> AVISOS: ");
+    Serial.printf("Baja(<%.1f): %s | Alta(>%.1f): %s\n", 
+                  Aviso_Temperatura_Baja, Estado_Aviso_Temperatura_Baja ? "ACTIVO" : "OK",
+                  Aviso_Temperatura_Alta, Estado_Aviso_Temperatura_Alta ? "ACTIVO" : "OK");
+
+    Serial.print(">> ALARMAS: ");
+    Serial.printf("Baja(<%.1f): %s | Alta(>%.1f): %s\n", 
+                  Alarma_Temperatura_Baja, Estado_Alarma_Temperatura_Baja ? "!!CRITICO!!" : "OK",
+                  Alarma_Temperatura_Alta, Estado_Alarma_Temperatura_Alta ? "!!CRITICO!!" : "OK");
+
+    Serial.print(">> UI STATUS: ");
+    Serial.printf("Aviso: %s (Rec: %s) | Alarma: %s (Rec: %s)\n", 
+                  Estado_Aviso ? "ON" : "OFF", avisoReconocido ? "SI" : "NO",
+                  Estado_Alarma ? "ON" : "OFF", alertaReconocida ? "SI" : "NO");
+    Serial.println("-----------------------------\n");
+}
 }

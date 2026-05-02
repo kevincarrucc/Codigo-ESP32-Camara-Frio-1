@@ -5,6 +5,13 @@
 #include <Firebase_ESP_Client.h> 
 #include <PubSubClient.h>
 #include "Planta.h"
+#include "Logica.h"
+
+
+
+extern Planta planta; 
+
+// ... el resto de tus externs (Estado_Luz, etc.)
 
 extern bool avisoReconocido;
 extern bool alertaReconocida;
@@ -192,60 +199,6 @@ void Luz_Interior(void) {
 
     lastReading = reading;
 
-    /*
-    int lecturaActualTecla = digitalRead(Pulsador_Luz_Pin);
-
-     if(lecturaActualTecla == LOW && lastButtonState == HIGH){
-
-    Estado_Luz = !Estado_Luz;
-
-    digitalWrite(Actuador_Luz_Camara, Estado_Luz);
-
-    client.publish(TOPIC_ACT_LUZ_CAMARA, Estado_Luz ? "1" : "0");
-    client.publish(TOPIC_ACT_WEB_LUZ_CAMARA, Estado_Luz ? "1" : "0");
-    
-    }
-
-    lastButtonState = lecturaActualTecla;
-    */
-   
-    /*
-    unsigned long tiempoActual = millis(); // El tiempo ahora mismo
-
-    // 2. Inicialización
-    if (ultimoEstadoTeclaFisica == -1) {
-        ultimoEstadoTeclaFisica = lecturaActualTecla;
-        ultimoProcesadoWeb = Estado_Web_Luz;
-        return;
-    }
-
-    // 3. DETECCIÓN DE CAMBIO FÍSICO (Con Antirrebote)
-    if (ultimoEstadoTeclaFisica == HIGH && lecturaActualTecla == LOW) {
-        // ¿Pasó suficiente tiempo desde el último cambio?
-        if ((tiempoActual - ultimoTiempoCambioLuz) > tiempoDebounce) {
-            
-            Estado_Luz = !Estado_Luz; // Cambia el estado de la luz
-            ultimoTiempoCambioLuz = tiempoActual; // Guardamos CUÁNDO cambió
-        } 
-    }
-    // 4. ACTUALIZACIÓN DEL ESTADO ANTERIOR (Obligatorio para detectar el próximo flanco)      
-    ultimoEstadoTeclaFisica = lecturaActualTecla;
-        
-    
-
-    // 4. DETECCIÓN DE CAMBIO WEB (Sin debounce, es digital y limpio)
-    if (Estado_Web_Luz != ultimoProcesadoWeb) {
-        Estado_Luz = !Estado_Luz;
-        ultimoProcesadoWeb = Estado_Web_Luz;
-    }
-
-    // 5. ACCIÓN FINAL SOBRE EL RELÉ
-    if (digitalRead(Actuador_Luz_Camara) != (Estado_Luz ? HIGH : LOW)) {
-        digitalWrite(Actuador_Luz_Camara, Estado_Luz ? HIGH : LOW);
-        client.publish(TOPIC_ACT_LUZ_CAMARA, Estado_Luz ? "1" : "0");
-        
-    }
-        */
 }
 
 void Funcionamiento_Periodico_M2 (void) {
@@ -316,47 +269,40 @@ void Control_Avisos_Temperatura(void) {
     } else if (Temperatura_Promedio > (Aviso_Temperatura_Baja + 0.5)) {
         Estado_Aviso_Temperatura_Baja = false;
     }
-}
- /*   if (Estado_Aviso_Temperatura_Alta == true && Estado_Aviso_Alto_Anterior == false|| Estado_Aviso_Temperatura_Baja == true && Estado_Aviso_Bajo_Anterior == false) {
-        Estado_Aviso_Alto_Anterior = Estado_Aviso_Temperatura_Alta; // Actualizamos el estado anterior de el aviso alto
-        Estado_Aviso_Bajo_Anterior = Estado_Aviso_Temperatura_Baja; // Actualizamos el estado anterior del aviso bajo
-        Estado_Aviso = true; // Si hay algún aviso de temperatura, se activa el aviso general
-        avisoReconocido = false; // Reseteamos el reconocimiento del aviso para que pueda volver a aparecer si surge otro aviso
-    } else if (Estado_Aviso_Temperatura_Alta == false && Estado_Aviso_Temperatura_Baja == false) {
-        Estado_Aviso_Alto_Anterior = Estado_Aviso_Temperatura_Alta; // Actualizamos el estado anterior de el aviso alto
-        Estado_Aviso_Bajo_Anterior = Estado_Aviso_Temperatura_Baja; // Actualizamos el estado anterior del aviso bajo
-        Estado_Aviso = false; // Si no hay ningún aviso de temperatura, se desactiva el aviso general
+  // --- LÓGICA DE AVISOS ---
+    if ((Estado_Aviso_Temperatura_Alta && !Estado_Aviso_Alto_Anterior) || 
+        (Estado_Aviso_Temperatura_Baja && !Estado_Aviso_Bajo_Anterior)) {
+        
+        Estado_Aviso = true;
+        planta.dispararNuevoAviso(); 
+
+        // CRUCIAL: Actualizamos los estados anteriores AQUÍ MISMO
+        // para que en la siguiente vuelta del loop no vuelva a entrar a este IF
+        Estado_Aviso_Alto_Anterior = Estado_Aviso_Temperatura_Alta;
+        Estado_Aviso_Bajo_Anterior = Estado_Aviso_Temperatura_Baja;
     }
 
-    if (Estado_Alarma_Temperatura_Alta == true || Estado_Alarma_Temperatura_Baja == true) {
-        Estado_Alarma_Alta_Anterior = Estado_Alarma_Temperatura_Alta; // Actualizamos el estado anterior de la alarma alta
-        Estado_Alarma_Baja_Anterior = Estado_Alarma_Temperatura_Baja; // Actualizamos el estado anterior de la alarma baja
-        Estado_Alarma = true; // Si hay alguna alarma de temperatura, se activa la alarma general
-        alertaReconocida = false; // Reseteamos el reconocimiento de la alerta para que pueda volver a aparecer si surge otra alerta
-    } else if (Estado_Alarma_Temperatura_Alta == false && Estado_Alarma_Temperatura_Baja == false) {
-        Estado_Alarma_Alta_Anterior = Estado_Alarma_Temperatura_Alta; // Actualizamos el estado anterior de la alarma alta
-        Estado_Alarma_Baja_Anterior = Estado_Alarma_Temperatura_Baja; // Actualizamos el estado anterior de la alarma baja
-        Estado_Alarma = false; // Si no hay ninguna alarma de temperatura, se desactiva la alarma general
+    if (!Estado_Aviso_Temperatura_Alta && !Estado_Aviso_Temperatura_Baja) {
+        Estado_Aviso = false;
+        // También actualizamos al volver a la normalidad
+        Estado_Aviso_Alto_Anterior = false;
+        Estado_Aviso_Bajo_Anterior = false;
+    }
+
+    // --- LÓGICA DE ALARMAS ---
+    if ((Estado_Alarma_Temperatura_Alta && !Estado_Alarma_Alta_Anterior) || 
+        (Estado_Alarma_Temperatura_Baja && !Estado_Alarma_Baja_Anterior)) {
+        
+        Estado_Alarma = true;
+        planta.dispararNuevaAlerta();
+
+        Estado_Alarma_Alta_Anterior = Estado_Alarma_Temperatura_Alta;
+        Estado_Alarma_Baja_Anterior = Estado_Alarma_Temperatura_Baja;
+    }
+
+    if (!Estado_Alarma_Temperatura_Alta && !Estado_Alarma_Temperatura_Baja) {
+        Estado_Alarma = false;
+        Estado_Alarma_Alta_Anterior = false;
+        Estado_Alarma_Baja_Anterior = false;
     }
 }
-   
-  // detectar flancos
-bool flancoAvisoAlto = Estado_Aviso_Temperatura_Alta && !Estado_Aviso_Alto_Anterior;
-bool flancoAvisoBajo = Estado_Aviso_Temperatura_Baja && !Estado_Aviso_Bajo_Anterior;
-
-// activar aviso general
-if (Estado_Aviso_Temperatura_Alta || Estado_Aviso_Temperatura_Baja) {
-    Estado_Aviso = true;
-} else {
-    Estado_Aviso = false;
-}
-
-// reset de reconocimiento SOLO si aparece uno nuevo
-if (flancoAvisoAlto || flancoAvisoBajo) {
-    avisoReconocido = false;
-}
-
-// actualizar históricos (SIEMPRE al final)
-Estado_Aviso_Alto_Anterior = Estado_Aviso_Temperatura_Alta;
-Estado_Aviso_Bajo_Anterior = Estado_Aviso_Temperatura_Baja;
-}*/

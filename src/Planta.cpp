@@ -9,6 +9,8 @@ extern const char* TOPIC_ALARMA_TEMPERATURA_ALTA;
 extern const char* TOPIC_ALARMA_TEMPERATURA_BAJA;
 extern const char* TOPIC_AVISO_TEMPERATURA_ALTA;
 extern const char* TOPIC_AVISO_TEMPERATURA_BAJA;
+extern bool avisoReconocido;
+extern bool alertaReconocida;
 
 Planta::Planta(Teclado &t, Display &d) : teclado(t), display(d) {}
 
@@ -45,34 +47,44 @@ void Planta::limpiarBuffer() {
     buffer = "";
     editando = false;
 }
+void Planta::verificarAlertas() {
+    // 1. Si hay una alarma activa y no ha sido reconocida
+    if (Estado_Alarma && !alertaReconocida) {
+        if (!enPantallaAlerta) {
+            pantallaAnteriorAlerta = actual; 
+            actual = PANTALLA_ALERTAS;
+            enPantallaAlerta = true;
+            anterior = (Pantalla)-1; 
+        }
+    }
+    // 2. SEGURIDAD: Solo volvemos a la principal si ESTÁBAMOS viendo el cartel
+    else if (!Estado_Alarma && enPantallaAlerta) {
+        enPantallaAlerta = false;
+        // Solo forzamos PANTALLA_PRINCIPAL si el cartel estaba bloqueando la vista
+        if (actual == PANTALLA_ALERTAS) {
+            actual = PANTALLA_PRINCIPAL;
+        }
+        anterior = (Pantalla)-1;
+    }
+}
 
 void Planta::verificarAvisos() {
-
-    // 👉 aparece SOLO si hay aviso Y no fue reconocido
-    if (Estado_Aviso && !avisoReconocido && !enPantallaAviso) {
-
-        pantallaAnteriorAviso = actual;
-        actual = PANTALLA_AVISOS;
-
-        enPantallaAviso = true;
+    if (Estado_Aviso && !avisoReconocido && !enPantallaAviso && !(Estado_Alarma && !alertaReconocida)) {
+        if (!enPantallaAviso) {
+            pantallaAnteriorAviso = actual;
+            actual = PANTALLA_AVISOS;
+            enPantallaAviso = true;
+            anterior = (Pantalla)-1;
+        }
+    }
+    // SEGURIDAD: Solo volvemos a la principal si ESTÁBAMOS viendo el cartel
+    else if (!Estado_Aviso && enPantallaAviso) {
+        enPantallaAviso = false;
+        if (actual == PANTALLA_AVISOS) {
+            actual = PANTALLA_PRINCIPAL;
+        }
         anterior = (Pantalla)-1;
     }
-
-}
-    
-
-void Planta::verificarAlertas() {
-
-    // 👉 aparece SOLO si hay alarma Y no fue reconocida
-    if (Estado_Alarma && !alertaReconocida && !enPantallaAlerta) {
-
-        pantallaAnteriorAlerta = actual;
-        actual = PANTALLA_ALERTAS;
-
-        enPantallaAlerta = true;
-        anterior = (Pantalla)-1;
-    }
-
 }
 
 void Planta::verificarTimeout() {
@@ -87,7 +99,7 @@ void Planta::verificarTimeout() {
 
             actual = PANTALLA_PRINCIPAL;
 
-            anterior = (Pantalla)-1; // 🔥 forzar refresco
+            anterior = (Pantalla)-1;
         }
     }
 }

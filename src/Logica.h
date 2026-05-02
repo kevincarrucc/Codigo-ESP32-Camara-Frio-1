@@ -11,4 +11,5 @@ void Control_Anomalias(void);
 void Control_Fases(void);
 void Control_Avisos_Temperatura(void);
 
+
 #endif
