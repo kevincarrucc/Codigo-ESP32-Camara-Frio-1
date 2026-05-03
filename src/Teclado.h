@@ -14,8 +14,6 @@ private:
 public:
     Teclado(uint8_t direccion);
 
-    void begin();
-
     char leer();  // devuelve tecla presionada (o '\0')
 
 };

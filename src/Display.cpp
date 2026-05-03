@@ -82,7 +82,7 @@ void Display::pantallaFases(bool Ausencia_Fase1, bool Ausencia_Fase2, bool Ausen
     }
 
     lcd.setCursor(0,3);
-    lcd.print("C-Temp.    D-Config.");
+    lcd.print("C-Atras   D-Config.");
 }
 
 void Display::pantallaLogin(const String &buffer) {

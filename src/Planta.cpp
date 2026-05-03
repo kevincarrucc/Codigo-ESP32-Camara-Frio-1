@@ -264,6 +264,7 @@ void Planta::manejarTecla(char tecla)
         tiempoLogin = millis();
         ultimaActividad = millis();
         actual = PANTALLA_CONFIGURACION;
+        buffer = "";
         } 
         else 
         {
@@ -345,13 +346,11 @@ void Planta::manejarTecla(char tecla)
         break;
 
     case PANTALLA_AVISOS:
-        if (tecla == 'C')
-            actual = PANTALLA_PRINCIPAL;
+       
         break;
 
     case PANTALLA_ALERTAS:
-        if (tecla == 'C')
-            actual = PANTALLA_PRINCIPAL;
+        
         break;
     }
 }

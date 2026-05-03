@@ -12,7 +12,6 @@
 #include "Teclado.h"
 #include "Display.h"
 #include "Planta.h"
-//firebase
 #include <Firebase_ESP_Client.h> // Asegúrate de tener esta librería instalada
 #include <addons/TokenHelper.h>
 #include <addons/RTDBHelper.h>
@@ -98,19 +97,12 @@ Fase Fase_3(Actuador_F3, Ausencia_Fase3, Tension_L3);
 void setup() {
   Serial.begin(115200);
   delay(1000);
-
-    setup_I2C(); // Configura el bus I2C (en Entradas.cpp)
-    teclado.begin();
-    display.begin();
-    planta.begin();
-
-void streamTimeoutCallback(bool timeout);
+  setup_I2C(); // Configura el bus I2C (en Entradas.cpp)
+  display.begin();
+  planta.begin();
   // Configuración de pines extra y comunicaciones
-  inicializarHardware();      // Configura INPUT_PULLUP y otros pines en Entradas.cpp
+  inicializarHardware();       // Configura INPUT_PULLUP y otros pines en Entradas.cpp
   inicializarComunicaciones(); // Conecta WiFi y MQTT en Red.cpp
-
-  Serial.println(">>> HELADERA INDUSTRIAL ONLINE <<<");
-
 }
 
 // --- 5. LOOP PRINCIPAL ---
@@ -130,43 +122,10 @@ void loop() {
   Control_Anomalias();             // Seguridad por tiempo de encendido
   procesarLogicaControl();           // Procesa la lógica de control de motores y alertas (en Logica.cpp)
   planta.update();                 // Actualiza la pantalla y maneja el teclado (en Planta.cpp)
-  
-  static unsigned long ultimoMonitor = 0;
-  if (millis() - ultimoMonitor >= 500) { // Cada 500ms
-    ultimoMonitor = millis();
-    // --- DEBUG DE ALERTAS Y MQTT (Pegar al final del loop) ---
-
-
-    char tecla = teclado.leer();
-
-    if (tecla != '\0') {
-        Serial.println(tecla);
-    }
-    // 1. Lectura física del pin (GPIO 2)
-    int estadoPinFisico = digitalRead(Pulsador_Luz_Pin);
-   
+  char tecla = teclado.leer();
+  if (tecla != '\0') {
+    Serial.println(tecla);
   }
-  static unsigned long ultimoDebug = 0;
-if (millis() - ultimoDebug >= 3000) {
-    ultimoDebug = millis();
-
-    Serial.println("\n--- [MONITOR DE SEGURIDAD] ---");
-    Serial.printf("Temp. Promedio: %.2f °C\n", Temperatura_Promedio);
-    
-    Serial.print(">> AVISOS: ");
-    Serial.printf("Baja(<%.1f): %s | Alta(>%.1f): %s\n", 
-                  Aviso_Temperatura_Baja, Estado_Aviso_Temperatura_Baja ? "ACTIVO" : "OK",
-                  Aviso_Temperatura_Alta, Estado_Aviso_Temperatura_Alta ? "ACTIVO" : "OK");
-
-    Serial.print(">> ALARMAS: ");
-    Serial.printf("Baja(<%.1f): %s | Alta(>%.1f): %s\n", 
-                  Alarma_Temperatura_Baja, Estado_Alarma_Temperatura_Baja ? "!!CRITICO!!" : "OK",
-                  Alarma_Temperatura_Alta, Estado_Alarma_Temperatura_Alta ? "!!CRITICO!!" : "OK");
-
-    Serial.print(">> UI STATUS: ");
-    Serial.printf("Aviso: %s (Rec: %s) | Alarma: %s (Rec: %s)\n", 
-                  Estado_Aviso ? "ON" : "OFF", avisoReconocido ? "SI" : "NO",
-                  Estado_Alarma ? "ON" : "OFF", alertaReconocida ? "SI" : "NO");
-    Serial.println("-----------------------------\n");
-}
+  // 1. Lectura física del pin (GPIO 2)
+  int estadoPinFisico = digitalRead(Pulsador_Luz_Pin);
 }
