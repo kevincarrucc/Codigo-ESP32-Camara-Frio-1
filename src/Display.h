@@ -14,7 +14,6 @@ public:
     void pantallaPrincipal(float Temperatura_Promedio, float Referencia_Temperatura, float Ventana_Temperatura);
     void pantallaFases(bool Ausencia_Fase1, bool Ausencia_Fase2, bool Ausencia_Fase3);
     void pantallaLogin(const String &buffer);
-    void pantallaNuevaClave(const String &buffer, bool repitiendo);
     void pantallaConfig();
     void pantallaConfigTemp(float temperatura, String buffer, bool editando);
     void pantallaConfigHisteresis(float histeresis, String buffer, bool editando);

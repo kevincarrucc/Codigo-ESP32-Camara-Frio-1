@@ -21,13 +21,10 @@ void mostrarEdicion(LiquidCrystal_I2C &lcd, float actual, String buffer, bool ed
     lcd.setCursor(13,2);
 
     if (editando) {
+        lcd.setCursor(13,2);
         lcd.print(buffer);
-        lcd.cursor();
-        lcd.blink();
-    } else {
-        lcd.noCursor();
-        lcd.noBlink();
-    }
+        lcd.setCursor(13 + buffer.length(), 2);
+    } 
 
     lcd.setCursor(0,3);
     lcd.print("C-Atras   #-Confirm.");
@@ -85,7 +82,7 @@ void Display::pantallaFases(bool Ausencia_Fase1, bool Ausencia_Fase2, bool Ausen
     }
 
     lcd.setCursor(0,3);
-    lcd.print("B-Temp.    D-Config.");
+    lcd.print("C-Temp.    D-Config.");
 }
 
 void Display::pantallaLogin(const String &buffer) {
@@ -100,41 +97,12 @@ void Display::pantallaLogin(const String &buffer) {
     lcd.setCursor(7,1);
 
     for (int i = 0; i < buffer.length(); i++) {
-        lcd.print("*");
-    }
-
-    lcd.setCursor(0,2);
-    lcd.print("B- Nueva clave");//falta toda la logica para esta funcionalidad
-
-    lcd.setCursor(0,3);
-    lcd.print("C-Atras         #-OK");
-}
-
-
-void Display::pantallaNuevaClave(const String &buffer, bool repitiendo) {
-
-    lcd.clear();
-
-    lcd.setCursor(0,0);
-    lcd.print("Nueva clave:");
-
-    lcd.setCursor(0,1);
-
-    if (!repitiendo)
-        lcd.print("Ingresar:");
-    else
-        lcd.print("Repetir:");
-
-    lcd.setCursor(10,1);
-
-    for (int i = 0; i < buffer.length(); i++) {
-        lcd.print("*");
+        lcd.print(buffer[i]);
     }
 
     lcd.setCursor(0,3);
     lcd.print("C-Atras         #-OK");
 }
-
 
 void Display::pantallaConfig() {
     lcd.clear();

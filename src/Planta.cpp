@@ -221,7 +221,7 @@ void Planta::manejarTecla(char tecla)
         break;
 
     case PANTALLA_FASES:
-        if (tecla == 'B')
+        if (tecla == 'C')
             actual = PANTALLA_PRINCIPAL;
         if (tecla == 'D')
         {
@@ -275,61 +275,6 @@ void Planta::manejarTecla(char tecla)
             buffer = "";
             actual = PANTALLA_PRINCIPAL;
             
-        }
-
-        break;
-
-    case PANTALLA_NUEVA_CLAVE:
-
-        if (tecla >= '0' && tecla <= '9')
-        {
-            if (buffer.length() < 6)
-            {
-                buffer += tecla;
-            }
-        }
-
-        if (tecla == '*')
-        {
-            if (buffer.length() > 0)
-            {
-                buffer.remove(buffer.length() - 1);
-            }
-        }
-
-        if (tecla == '#')
-        {
-
-            if (!repitiendoClave)
-            {
-                nuevaClave1 = buffer;
-                buffer = "";
-                repitiendoClave = true;
-            }
-            else
-            {
-                nuevaClave2 = buffer;
-
-                if (nuevaClave1 == nuevaClave2)
-                {
-                    claveSistema = nuevaClave1;
-                }
-
-                // reset
-                buffer = "";
-                nuevaClave1 = "";
-                nuevaClave2 = "";
-                repitiendoClave = false;
-
-                actual = PANTALLA_LOGIN;
-            }
-        }
-
-        if (tecla == 'C')
-        {
-            buffer = "";
-            repitiendoClave = false;
-            actual = PANTALLA_LOGIN;
         }
 
         break;
@@ -439,10 +384,6 @@ void Planta::actualizarPantalla()
                 display.pantallaLogin(buffer);
                 break;
 
-            case PANTALLA_NUEVA_CLAVE:
-                display.pantallaNuevaClave(buffer, repitiendoClave);
-                break;
-
             case PANTALLA_CONFIGURACION:
                 display.pantallaConfig();
                 break;
@@ -536,10 +477,6 @@ void Planta::actualizarPantalla()
             
             case PANTALLA_LOGIN:
                 display.pantallaLogin(buffer);
-                break;
-
-            case PANTALLA_NUEVA_CLAVE:
-                display.pantallaNuevaClave(buffer, repitiendoClave);
                 break;
 
             case PANTALLA_CONFIGURACION:
