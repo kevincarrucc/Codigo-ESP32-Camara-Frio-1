@@ -38,7 +38,7 @@ Fase Fase_1(Actuador_F1, Ausencia_Fase1, Tension_L1);
 Fase Fase_2(Actuador_F2, Ausencia_Fase2, Tension_L2);
 Fase Fase_3(Actuador_F3, Ausencia_Fase3, Tension_L3);
 
-// --- 1. DEFINICIÓN DE VARIABLES GLOBALES ---
+// Definición de variables globales
 unsigned long ultimoEnvio = 0;
 unsigned long Arranque_M1 = 0, Arranque_M2 = 0;
 unsigned long intervaloEnvio = 5000;
@@ -48,14 +48,6 @@ float Potencia_Aparente = 0;
 float Temperatura_C1=0, Temperatura_C2=0, Temperatura_Exterior=0;
 int lastButtonState = HIGH;
 
-
-// Definiciones adicionales
-int16_t Corriente_L1_Lectura = 0;
-int16_t Corriente_L2_Lectura = 0;
-int16_t Corriente_L3_Lectura = 0;
-String claveSistema = "1234";
-String bufferClave = "";
-
 // Valores de umbrales configurables
 float Alarma_Temperatura_Alta = 10.0;
 float Alarma_Temperatura_Baja = -2.0;
@@ -64,8 +56,6 @@ float Aviso_Temperatura_Baja = 0.0;
 float Referencia_Temperatura = 3.0; 
 float Ventana_Temperatura = 2.0;      
 float Temperatura_Promedio = 0.0;
-
-
 
 // Estados de las alarmas (Banderas)
 bool Realizar_Arranque_Periodico = false;
@@ -89,10 +79,12 @@ bool Ausencia_Fase1=false, Ausencia_Fase2=false, Ausencia_Fase3=false;
 bool avisoReconocido = false;
 bool alertaReconocida = false;
 
-
-
-
-
+// Definiciones adicionales
+int16_t Corriente_L1_Lectura = 0;
+int16_t Corriente_L2_Lectura = 0;
+int16_t Corriente_L3_Lectura = 0;
+String claveSistema = "1234";
+String bufferClave = "";
 
 void setup() {
   Serial.begin(115200);
@@ -105,27 +97,22 @@ void setup() {
   inicializarComunicaciones(); // Conecta WiFi y MQTT en Red.cpp
 }
 
-// --- 5. LOOP PRINCIPAL ---
 void loop() {
-  loop_I2C(); // Mantiene el bus I2C activo (en Entradas.cpp)
-  Escalar(); // Lee y escala sensores (en Escalado.cpp)
+  loop_I2C();                      // Mantiene el bus I2C activo (en Entradas.cpp)
+  Escalar();                       // Lee y escala sensores (en Escalado.cpp)
   Calcular_Potencia_Aparente(Tension_L1, Tension_L2, Tension_L3, Corriente_L1, Corriente_L2, Corriente_L3); // Calcula la potencia aparente (en Escalado.cpp)
-  // A. Gestión de Red y Mensajes MQTT (en Entradas.cpp)
-  //procesarLogicaControl(); 
-  Control_Fases(); // Verifica fases y actualiza Ausencia_FaseX
-  // B. Tu Lógica Real (de Logica.cpp)
-  Control_Avisos_Temperatura(); // Control de avisos y alarmas de temperatura
+  Control_Fases();                 // Verifica fases y actualiza Ausencia_FaseX
+  Control_Avisos_Temperatura();    // Control de avisos y alarmas de temperatura
   Control_Temperatura();           // Control de frío y motores
   Alerta_Puerta();                 // Manejo del sensor de puerta
   Luz_Interior();                  // Pulsador físico y web
   Funcionamiento_Periodico_M2();   // Rotación de motores
   Control_Anomalias();             // Seguridad por tiempo de encendido
-  procesarLogicaControl();           // Procesa la lógica de control de motores y alertas (en Logica.cpp)
+  procesarLogicaControl();         // Procesa la lógica de control de motores y alertas (en Logica.cpp)
   planta.update();                 // Actualiza la pantalla y maneja el teclado (en Planta.cpp)
   char tecla = teclado.leer();
   if (tecla != '\0') {
     Serial.println(tecla);
   }
-  // 1. Lectura física del pin (GPIO 2)
   int estadoPinFisico = digitalRead(Pulsador_Luz_Pin);
 }
