@@ -179,6 +179,8 @@ void Planta::editarFloat(char tecla, float &variable, Pantalla pantallaVolver, f
     }
 }
 
+
+
 // ------------------ TECLAS ------------------
 
 void Planta::manejarTecla(char tecla)
@@ -278,6 +280,8 @@ void Planta::manejarTecla(char tecla)
         }
 
         break;
+
+        //prueba
 
     case PANTALLA_CONFIGURACION:
         if (!logueado) {
