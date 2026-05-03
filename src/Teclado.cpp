@@ -39,8 +39,7 @@ Teclado::Teclado(uint8_t direccion) {
 }
 
 void Teclado::begin() {
-    // No se necesita inicializar el PCF8574 para el teclado analógico.
-    // El ADS1115 ya se inicializa en setup_I2C().
+    // El ADS1115 se inicializa en setup_I2C().
 }
 
 char Teclado::leer() {

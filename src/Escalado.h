@@ -22,5 +22,7 @@ float escalarTension(int bits);
 void procesarTensiones(int bitsL1, int bitsL2, int bitsL3, float &vL1, float &vL2, float &vL3);
 
 void Escalar(void);
+float Calcular_Potencia_Aparente(float tensionL1, float tensionL2, float tensionL3,
+                              float corrienteL1, float corrienteL2, float corrienteL3);
 
 #endif

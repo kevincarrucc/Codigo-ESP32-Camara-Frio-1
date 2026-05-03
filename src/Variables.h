@@ -29,6 +29,7 @@ extern float Temperatura_C1, Temperatura_C2, Temperatura_Exterior;
 extern float Tension_L1, Tension_L2, Tension_L3;
 extern int16_t Corriente_L1_Lectura, Corriente_L2_Lectura, Corriente_L3_Lectura;
 extern float Corriente_L1, Corriente_L2, Corriente_L3;
+extern float Potencia_Aparente;
 extern float Referencia_Temperatura, Ventana_Temperatura, Temperatura_Promedio;
 extern bool Realizar_Arranque_Periodico, Ultimo_Estado_M2;
 extern bool Ausencia_Fase1, Ausencia_Fase2, Ausencia_Fase3, Ultimo_Estado_Luz;

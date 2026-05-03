@@ -1,6 +1,7 @@
 #include "Escalado.h"
 #include "Variables.h" 
 
+extern float Potencia_Aparente;
 // --- Funciones Matemáticas de Conversión ---
 
 float escalarTemperatura(int bits) {
@@ -41,4 +42,17 @@ void Escalar(void) {
     Corriente_L1 = escalarCorrienteADS(Corriente_L1_Lectura);
     Corriente_L2 = escalarCorrienteADS(Corriente_L2_Lectura);
     Corriente_L3 = escalarCorrienteADS(Corriente_L3_Lectura);
+}
+
+float Calcular_Potencia_Aparente(float tensionL1, float tensionL2, float tensionL3,
+                              float corrienteL1, float corrienteL2, float corrienteL3) {
+    // Potencia aparente por fase (VA)
+    float potenciaL1 = tensionL1 * corrienteL1;
+    float potenciaL2 = tensionL2 * corrienteL2;
+    float potenciaL3 = tensionL3 * corrienteL3;
+
+    // Potencia total en kVA
+    Potencia_Aparente = (potenciaL1 + potenciaL2 + potenciaL3) / 1000.0f;
+
+    return Potencia_Aparente;
 }

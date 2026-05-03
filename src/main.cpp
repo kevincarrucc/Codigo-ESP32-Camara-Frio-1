@@ -33,6 +33,7 @@ int ultimoEstadoWeb = -1; // Para detectar cambios en el callback de la web
 // --- 1. DEFINICIÓN DE VARIABLES GLOBALES ---
 float Tension_L1=0, Tension_L2=0, Tension_L3=0;
 float Corriente_L1=0, Corriente_L2=0, Corriente_L3=0;
+float Potencia_Aparente = 0;
 float Temperatura_C1=0, Temperatura_C2=0, Temperatura_Exterior=0;
 bool Ausencia_Fase1=false, Ausencia_Fase2=false, Ausencia_Fase3=false;
 int lastButtonState = HIGH;
@@ -74,7 +75,7 @@ bool Estado_Aviso_Temperatura_Alta = false;
 bool Estado_Aviso_Temperatura_Baja = false;
 
 // Definiciones de variables globales faltantes
-unsigned long intervaloEnvio = 10000;
+unsigned long intervaloEnvio = 5000;
 String claveSistema = "1234";
 String bufferClave = "";
 
@@ -116,6 +117,7 @@ void streamTimeoutCallback(bool timeout);
 void loop() {
   loop_I2C(); // Mantiene el bus I2C activo (en Entradas.cpp)
   Escalar(); // Lee y escala sensores (en Escalado.cpp)
+  Calcular_Potencia_Aparente(Tension_L1, Tension_L2, Tension_L3, Corriente_L1, Corriente_L2, Corriente_L3); // Calcula la potencia aparente (en Escalado.cpp)
   // A. Gestión de Red y Mensajes MQTT (en Entradas.cpp)
   //procesarLogicaControl(); 
   Control_Fases(); // Verifica fases y actualiza Ausencia_FaseX
@@ -130,7 +132,7 @@ void loop() {
   planta.update();                 // Actualiza la pantalla y maneja el teclado (en Planta.cpp)
   
   static unsigned long ultimoMonitor = 0;
-  if (millis() - ultimoMonitor >= 2000) { // Cada 2 segundos
+  if (millis() - ultimoMonitor >= 500) { // Cada 500ms
     ultimoMonitor = millis();
     // --- DEBUG DE ALERTAS Y MQTT (Pegar al final del loop) ---
 

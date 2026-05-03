@@ -6,15 +6,11 @@
 #include <PubSubClient.h>
 #include <WiFiClientSecure.h>
 #include "Claves.h"
-//firebase
 #include <Arduino.h>
-#include <Firebase_ESP_Client.h> // <--- ESTA LÍNEA ES CRUCIAL
+#include <Firebase_ESP_Client.h> 
 #include "Variables.h"
 #include "Clases.h"
 
-
-// Esto le avisa al compilador que las variables existen en el main
-// y que NO las tiene que crear de nuevo acá.
 extern bool Estado_Web_Luz;
 extern bool Estado_Luz;
 extern int lastButtonState;
@@ -52,15 +48,17 @@ const char* TOPIC_CORRIENTE_L1 = CORRIENTE_L1;
 const char* TOPIC_CORRIENTE_L2 = CORRIENTE_L2;
 const char* TOPIC_CORRIENTE_L3 = CORRIENTE_L3;
 
+const char* TOPIC_POTENCIA_APARENTE = POTENCIA_APARENTE;
+
 const char* TOPIC_ESTADO_MOTOR_1 = ESTADO_MOTOR_1;
 const char* TOPIC_ESTADO_MOTOR_2 = ESTADO_MOTOR_2;
 const char* TOPIC_ACT_LUZ_CAMARA = ACT_LUZ_CAMARA;
 const char* TOPIC_ACT_WEB_LUZ_CAMARA = ACT_WEB_LUZ_CAMARA;
 
 // --- Alarmas y Seguridad (Crucial para el monitoreo remoto) ---
-const char* TOPIC_ESTADO_PRESENCIA_FASE = ESTADO_PRESENCIA_FASE;        // Aviso_Ausencia
-const char* TOPIC_ALERTA_ANOMALIA = ESTADO_ANOMALIA;  // Anomalia (30 min)
-const char* TOPIC_ALERTA_PUERTA = ESTADO_ALERTA_PUERTA;      // Alerta_Puerta_Abierta
+const char* TOPIC_ESTADO_PRESENCIA_FASE = ESTADO_PRESENCIA_FASE;        
+const char* TOPIC_ALERTA_ANOMALIA = ESTADO_ANOMALIA;  
+const char* TOPIC_ALERTA_PUERTA = ESTADO_ALERTA_PUERTA;      
 
 //variables de control
 const char* TOPIC_SET_POINT_TEMPERATURA = SET_POINT_TEMPERATURA;
@@ -78,8 +76,8 @@ const char* TOPIC_AVISO_TEMPERATURA_ALTA = AVISO_TEMPERATURA_ALTA;
 const char* TOPIC_AVISO_TEMPERATURA_BAJA = AVISO_TEMPERATURA_BAJA;
 
 
-//unsigned long ultimoEnvio = 0;
-//
+
+//certificado de seguridad para MQTT (Hivemq Cloud)
 static const char* root_ca PROGMEM = R"EOF(
 -----BEGIN CERTIFICATE-----
 MIIFazCCA1OgAwIBAgIRAIIQz7DSQONZRGPgu2OCiwAwDQYJKoZIhvcNAQELBQAw
@@ -113,12 +111,9 @@ mRGunUHBcnWEvgJBQl9nJEiU0Zsnvgc/ubhPgXRR4Xq37Z0j4r7g1SgEEzwxA57d
 emyPxgcYxn/eR44/KJ4EBs+lVDR3veyJm+kXQ99b21/+jh5Xos1AnX5iItreGCc=
 -----END CERTIFICATE-----
 )EOF";
-/*
-WiFiClientSecure espClient;
-PubSubClient client(espClient);
-*/
-unsigned long lastMsg = 0;
-char msg[50];
+
+unsigned long lastMsg = 0;// Variable para controlar el intervalo de envio de datos a el broker MQTT
+char msg[50];// Buffer para construir el mensaje a enviar por MQTT
 
 // Prototipos (Avisos para el compilador)
 void loop_I2C();
@@ -128,7 +123,7 @@ void setup_wifi();
 void reconnect();
 void callback(char* topic, byte* payload, unsigned int length);
 
-
+// --- FUNCIONES ---
 void callback(char* topic, unsigned char* payload, unsigned int length) {
 
     char buffer[length + 1];
@@ -138,7 +133,6 @@ void callback(char* topic, unsigned char* payload, unsigned int length) {
    if (strcmp(topic, TOPIC_ACT_WEB_LUZ_CAMARA) == 0) {
 
     Estado_Luz = payload[0] - '0';
-
     digitalWrite(Actuador_Luz_Camara, Estado_Luz);
     client.publish(TOPIC_ACT_LUZ_CAMARA, Estado_Luz ? "1" : "0");
    }
@@ -176,13 +170,9 @@ void setup_wifi() {
   // Mientras NO esté conectado...
   while (WiFi.status() != WL_CONNECTED) {
     
-    // Ejecutamos el método parpadear constantemente.
-    // Como tu clase usa millis(), ella sola decidirá 
-    // cuándo cambiar el estado del LED sin detener el código.
     Coneccion_Wifi.parpadear(); 
     
-    // Opcional: un mini delay para no saturar el Serial, 
-    // pero MUCHO menor que el intervalo de parpadeo.
+    //un mini delay para no saturar el Serial, 
     delay(1); 
     
     // Para ver el progreso en el monitor serie sin llenarlo de puntos:
@@ -205,18 +195,7 @@ void reconnect() {
     clientId += String(random(0xffff), HEX);
 if (client.connect(clientId.c_str(), mqtt_username, mqtt_password)) {
       Serial.println("connected");
-      client.subscribe(TOPIC_ACT_LUZ_CAMARA);/*
-      client.subscribe(TOPIC_TEMPERATURA_1);
-      client.subscribe(TOPIC_TEMPERATURA_2);
-      client.subscribe(TOPIC_TEMPERATURA_EXTERIOR);
-      client.subscribe(TOPIC_TENSION_L1);
-      client.subscribe(TOPIC_CORRIENTE_L1);
-      client.subscribe(TOPIC_ESTADO_PUERTA);
-      client.subscribe(TOPIC_ESTADO_MOTOR_1);
-      client.subscribe(TOPIC_ESTADO_MOTOR_2);
-      client.subscribe(TOPIC_ESTADO_PRESENCIA_FASE);
-      client.subscribe(TOPIC_ALERTA_ANOMALIA);
-      client.subscribe(TOPIC_ALERTA_PUERTA);*/
+      client.subscribe(TOPIC_ACT_LUZ_CAMARA);
       client.subscribe(TOPIC_ACT_WEB_LUZ_CAMARA);
       client.subscribe(TOPIC_SET_POINT_TEMPERATURA);
       client.subscribe(TOPIC_SET_POINT_HISTERESIS);
@@ -244,13 +223,7 @@ void procesarLogicaControl() {
   if (millis() - ultimoEnvio >= intervaloEnvio) {
     ultimoEnvio = millis();
     char buffer[10];
-
-    //client.publish(TOPIC_ACT_LUZ_CAMARA, Estado_Luz ? "1" : "0");
-    //client.publish(TOPIC_ACT_WEB_LUZ_CAMARA, Estado_Luz ? "1" : "0"); estas dos estan en LOGICA > funcion luzinterior, ubicarlas aca hace que responda mas lento 
-
-  // 4. Envío de Temperaturas Escaladas 
-    // dtostrf(variable, ancho_total, decimales, buffer)
-    
+  
     dtostrf(Temperatura_C1, 4, 1, buffer); 
     client.publish(TOPIC_TEMPERATURA_1, buffer);
 
@@ -270,9 +243,7 @@ void procesarLogicaControl() {
     dtostrf(Tension_L3, 5, 1, buffer); 
     client.publish(TOPIC_TENSION_L3, buffer);
 
-    // --- Envío de Corrientes Escaladas (Desde el ADS1015) ---
-    // Usamos 2 decimales para mayor precisión en el consumo
-    
+    // --- Envío de Corrientes Escaladas
     dtostrf(Corriente_L1, 5, 2, buffer); 
     client.publish(TOPIC_CORRIENTE_L1, buffer);
 
@@ -282,9 +253,13 @@ void procesarLogicaControl() {
     dtostrf(Corriente_L3, 5, 2, buffer); 
     client.publish(TOPIC_CORRIENTE_L3, buffer);
 
+    // --- Envío de Potencia Aparente ---
+    dtostrf(Potencia_Aparente, 6, 2, buffer); 
+    client.publish(TOPIC_POTENCIA_APARENTE, buffer);
+
     // --- Estado de la Puerta  ---
-    // Si Puerta_Abierta es true enviamos "1", si es false enviamos "0"
     client.publish(TOPIC_ESTADO_PUERTA, Puerta_Abierta ? "1" : "0");
+    client.publish(TOPIC_ALERTA_PUERTA, Alerta_Puerta_Abierta ? "1" : "0");
 
     // --- ESTADOS DE MOTORES (0 o 1) ---
     client.publish(TOPIC_ESTADO_MOTOR_1, M1_Encendido ? "1" : "0");
@@ -295,9 +270,6 @@ void procesarLogicaControl() {
     
     // Si un motor falló o quedó encendido de más (Anomalía)
     client.publish(TOPIC_ALERTA_ANOMALIA, Anomalia ? "1" : "0");
-
-    // Si la puerta quedó abierta más tiempo del debido
-    client.publish(TOPIC_ALERTA_PUERTA, Alerta_Puerta_Abierta ? "1" : "0");
 
     //Enviso de avisos y alarmas de temperatura
     client.publish(TOPIC_ESTADO_ALARMA_TEMPERATURA_ALTA, Estado_Alarma_Temperatura_Alta ? "1" : "0");
@@ -325,8 +297,6 @@ void inicializarHardware() {
     pinMode(Pulsador_Luz_Pin, INPUT_PULLUP);      // D17
 
     // --- ENTRADAS ANALÓGICAS ---
-    // En ESP32, pinMode(ANALOG) no es estrictamente necesario para analogRead,
-    // pero dejarlo ayuda a documentar el código.
     pinMode(Temperatura_C1_Pin, INPUT);           // D33
     pinMode(Temperatura_C2_Pin, INPUT);           // D32
     pinMode(Temperatura_Ext_Pin, INPUT);          // D35
@@ -342,18 +312,15 @@ void inicializarHardware() {
 void setup_I2C() {
   // Inicializar I2C en los pines de tu diagrama
   Wire.begin(21, 22);
-
   // Iniciar ADS1015, si falla no continúa
   if (!ads.begin()) {
     while (1); 
   }
-
   // Configurar Ganancia para rango +/- 4.096V
   ads.setGain(GAIN_ONE);
 }
 
 void loop_I2C() {
-  // USA LA VARIABLE 'Corriente_L1' (que es float), NO EL PIN.
   Corriente_L1_Lectura = ads.readADC_SingleEnded(1);
   Corriente_L2_Lectura = ads.readADC_SingleEnded(0);
   Corriente_L3_Lectura = ads.readADC_SingleEnded(2);

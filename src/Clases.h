@@ -85,7 +85,7 @@ inline void Parpadeo::parpadear(void) {
 inline Motor::Motor(int _Pin) {
     Pin_Motor = _Pin;
 }
-// Nota: He usado extern para Arranque_M1/M2 si no están en EntradaSalida.h
+
 extern unsigned long Arranque_M1; 
 extern unsigned long Arranque_M2;
 
@@ -103,7 +103,7 @@ inline void Motor::arranque(void){
     }
 }
 
-inline void Motor::parada(void){
+inline void Motor::parada(void){ 
     if (digitalRead(Pin_Motor) == HIGH){
         digitalWrite(Pin_Motor, LOW);
     }
