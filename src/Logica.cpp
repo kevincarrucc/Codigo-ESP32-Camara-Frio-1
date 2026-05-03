@@ -23,8 +23,6 @@ extern const char* TOPIC_ACT_WEB_LUZ_CAMARA;
 // DECLARACIONES EXTERN
 extern bool Estado_Luz;
 extern bool Estado_Web_Luz;
-extern int ultimoEstadoTeclaFisica;
-extern int ultimoEstadoWeb; 
 bool ultimoProcesadoWeb = false;
 
 

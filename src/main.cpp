@@ -12,77 +12,23 @@
 #include "Teclado.h"
 #include "Display.h"
 #include "Planta.h"
-#include <Firebase_ESP_Client.h> // Asegúrate de tener esta librería instalada
+#include <Firebase_ESP_Client.h> 
 #include <addons/TokenHelper.h>
 #include <addons/RTDBHelper.h>
 
-FirebaseData fbdo_stream; // Objeto para el flujo de datos en tiempo real
-FirebaseAuth auth;
-FirebaseConfig config_fb;
-
-Teclado teclado(0x26);
-Display display(0x27);
-Planta planta(teclado, display);
-
-bool Estado_Luz = false;
-bool Estado_Web_Luz = false;
-int ultimoEstadoTeclaFisica = -1;
-int ultimoEstadoWeb = -1; // Para detectar cambios en el callback de la web
-
-// --- 1. DEFINICIÓN DE VARIABLES GLOBALES ---
-float Tension_L1=0, Tension_L2=0, Tension_L3=0;
-float Corriente_L1=0, Corriente_L2=0, Corriente_L3=0;
-float Potencia_Aparente = 0;
-float Temperatura_C1=0, Temperatura_C2=0, Temperatura_Exterior=0;
-bool Ausencia_Fase1=false, Ausencia_Fase2=false, Ausencia_Fase3=false;
-int lastButtonState = HIGH;
-unsigned long ultimoEnvio = 0;
-unsigned long Arranque_M1 = 0, Arranque_M2 = 0;
-
-bool avisoReconocido = false;
-bool alertaReconocida = false;
-
-// Definiciones adicionales
-int16_t Corriente_L1_Lectura = 0;
-int16_t Corriente_L2_Lectura = 0;
-int16_t Corriente_L3_Lectura = 0;
-
-float Referencia_Temperatura = 3.0; 
-float Ventana_Temperatura = 2.0;      
-float Temperatura_Promedio = 0.0;
-bool Realizar_Arranque_Periodico = false;
-bool Ultimo_Estado_M2 = false;
-bool Ultimo_Estado_Luz = false;
-bool Anomalia = false, Aviso_Ausencia = false, Alerta_Puerta_Abierta = false;
-bool M1_Encendido = false, M2_Encendido = false, Puerta_Abierta = false;
-bool P_Pulsador_Luz = false; 
-bool Estado_Alarma = false, Estado_Aviso = false;
-bool Estado_Alarma_Alta_Anterior = false, Estado_Aviso_Alto_Anterior = false;
-bool Estado_Alarma_Baja_Anterior = false, Estado_Aviso_Bajo_Anterior = false;
-
-
-// Valores de umbrales (puedes ajustar los números)
-float Alarma_Temperatura_Alta = 10.0;
-float Alarma_Temperatura_Baja = -2.0;
-float Aviso_Temperatura_Alta = 8.0;
-float Aviso_Temperatura_Baja = 0.0;
-
-// Estados de las alarmas (Banderas)
-bool Estado_Alarma_Temperatura_Alta = false;
-bool Estado_Alarma_Temperatura_Baja = false;
-bool Estado_Aviso_Temperatura_Alta = false;
-bool Estado_Aviso_Temperatura_Baja = false;
-
-// Definiciones de variables globales faltantes
-unsigned long intervaloEnvio = 5000;
-String claveSistema = "1234";
-String bufferClave = "";
-
-// --- 2. OBJETOS DE RED ---
+// Objetos de red y MQTT
 WiFiClientSecure espClient;
 PubSubClient client(espClient);
 
-// --- 3. INSTANCIAS DE CLASES ---
+// Objetos de Firebase
+FirebaseData fbdo_stream;
+FirebaseAuth auth;
+FirebaseConfig config_fb;
+
+// Definicion de objetos globales
+Teclado teclado(0x26);
+Display display(0x27);
+Planta planta(teclado, display);
 Motor Motor_1(Actuador_M1);
 Motor Motor_2(Actuador_M2);
 Parpadeo Puerta(Actuador_Alerta_Puerta, 1000); // 1000ms de intermitencia
@@ -92,8 +38,62 @@ Fase Fase_1(Actuador_F1, Ausencia_Fase1, Tension_L1);
 Fase Fase_2(Actuador_F2, Ausencia_Fase2, Tension_L2);
 Fase Fase_3(Actuador_F3, Ausencia_Fase3, Tension_L3);
 
+// --- 1. DEFINICIÓN DE VARIABLES GLOBALES ---
+unsigned long ultimoEnvio = 0;
+unsigned long Arranque_M1 = 0, Arranque_M2 = 0;
+unsigned long intervaloEnvio = 5000;
+float Tension_L1=0, Tension_L2=0, Tension_L3=0;
+float Corriente_L1=0, Corriente_L2=0, Corriente_L3=0;
+float Potencia_Aparente = 0;
+float Temperatura_C1=0, Temperatura_C2=0, Temperatura_Exterior=0;
+int lastButtonState = HIGH;
 
-// --- 4. SETUP ---
+
+// Definiciones adicionales
+int16_t Corriente_L1_Lectura = 0;
+int16_t Corriente_L2_Lectura = 0;
+int16_t Corriente_L3_Lectura = 0;
+String claveSistema = "1234";
+String bufferClave = "";
+
+// Valores de umbrales configurables
+float Alarma_Temperatura_Alta = 10.0;
+float Alarma_Temperatura_Baja = -2.0;
+float Aviso_Temperatura_Alta = 8.0;
+float Aviso_Temperatura_Baja = 0.0;
+float Referencia_Temperatura = 3.0; 
+float Ventana_Temperatura = 2.0;      
+float Temperatura_Promedio = 0.0;
+
+
+
+// Estados de las alarmas (Banderas)
+bool Realizar_Arranque_Periodico = false;
+bool Ultimo_Estado_M2 = false;
+bool Ultimo_Estado_Luz = false;
+bool Anomalia = false, Aviso_Ausencia = false, Alerta_Puerta_Abierta = false;
+bool M1_Encendido = false, M2_Encendido = false, Puerta_Abierta = false;
+bool P_Pulsador_Luz = false; 
+
+bool Estado_Alarma = false, Estado_Aviso = false;
+bool Estado_Alarma_Alta_Anterior = false, Estado_Aviso_Alto_Anterior = false;
+bool Estado_Alarma_Baja_Anterior = false, Estado_Aviso_Bajo_Anterior = false;
+bool Estado_Alarma_Temperatura_Alta = false;
+bool Estado_Alarma_Temperatura_Baja = false;
+bool Estado_Aviso_Temperatura_Alta = false;
+bool Estado_Aviso_Temperatura_Baja = false;
+bool Estado_Luz = false;
+bool Estado_Web_Luz = false;
+bool Ausencia_Fase1=false, Ausencia_Fase2=false, Ausencia_Fase3=false;
+
+bool avisoReconocido = false;
+bool alertaReconocida = false;
+
+
+
+
+
+
 void setup() {
   Serial.begin(115200);
   delay(1000);
